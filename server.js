@@ -88,3 +88,13 @@ app.get('/usersLookup', (req, res) => {
   .catch(err => console.log({err}))
 })
 
+app.get('/follow', (req, res) => {
+  const userId = 783214
+  request('POST', `https://api.twitter.com/1.1/friendships/create.json?user_id=${userId}&follow=true`)
+  .then(response => {
+    console.log('User followed', userId)
+    console.log(response.data)
+    res.send(response.data)
+  })
+  .catch(err => console.log(err.response.data))
+})
