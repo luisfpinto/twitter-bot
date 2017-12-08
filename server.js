@@ -11,7 +11,7 @@ app.use(session({
   secret,
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false } // Set this to false to allow using non https hosts
+  cookie: { secure: false } // Set this to false to allow using non https hosts 
 }))
 
 app.use('/auth', auth)
