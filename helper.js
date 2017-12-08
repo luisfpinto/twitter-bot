@@ -1,6 +1,6 @@
 const axios = require('axios')
-const { ACCESS_TOKEN } = require('./config')
-var example = require('./example')
+const { ACCESS_TOKEN, API_KEY, API_SECRET, callbackURL } = require('./config')
+const OAuth = require('oauth').OAuth
 
 const request = function (method = 'GET', url = '') {
   return new Promise((resolve, reject) => {
@@ -17,6 +17,17 @@ const request = function (method = 'GET', url = '') {
     .catch(err => reject(err))
   })
 }
+
+// This function allow us to authentica a twitter user using Oauth
+const oAuth = new OAuth(
+    'https://api.twitter.com/oauth/request_token',
+    'https://api.twitter.com/oauth/access_token',
+    API_KEY,
+    API_SECRET,
+    '1.0',
+    callbackURL,
+    'HMAC-SHA1'
+)
 
 // This function will split the number of users in a few array of 100users. This is because to get userinfo you can only do get a request for up to 100 users.
 function split (userIds) {
@@ -62,4 +73,4 @@ function filterUser (user, filter) {
   }
 }
 
-module.exports = {request, split, filterUser}
+module.exports = {request, split, filterUser, oAuth}

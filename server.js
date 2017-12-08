@@ -1,9 +1,20 @@
 const axios = require('axios')
 const express = require('express')
+var session = require('express-session')
 const app = express()
+const auth = require('./authentication')
 
-const { PORT, API_SECRET_64 } = require('./config')
+const { PORT, API_SECRET_64, secret } = require('./config')
 const { request, split, filterUser } = require('./helper')
+
+app.use(session({
+  secret,
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}))
+
+app.use('/auth', auth)
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`)
@@ -59,6 +70,7 @@ app.get('/userId', (req, res) => {
   .catch(err => console.log({err}))
 })
 
+// Get Followers Id from a username
 app.get('/followersId', (req, res) => {
   const name = user.name || 'twitter'
   request('GET', `https://api.twitter.com/1.1/followers/ids.json?cursor=-1&screen_name=${name}&count=${user.followers}`)
@@ -69,14 +81,8 @@ app.get('/followersId', (req, res) => {
   .catch(err => console.log({err}))
 })
 
+// Check if a user is good or not to follow
 app.get('/usersLookup', (req, res) => {
-  /* Filters for a good user
-    response.data.description !== ''
-    default_profile_image !== true
-    statuses_count !== 0
-    followers_count !== 0
-    friends_count !== 0
-  */
   const userName = 'twitter'
   const filter = 'hard'
   request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=${userName}`)
@@ -88,6 +94,7 @@ app.get('/usersLookup', (req, res) => {
   .catch(err => console.log({err}))
 })
 
+// Follow a user by userId
 app.get('/follow', (req, res) => {
   const userId = 783214
   request('POST', `https://api.twitter.com/1.1/friendships/create.json?user_id=${userId}&follow=true`)
