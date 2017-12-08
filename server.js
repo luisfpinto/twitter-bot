@@ -2,8 +2,8 @@ const axios = require('axios')
 const express = require('express')
 const app = express()
 
-const { PORT, API_SECRET_64, ACCESS_TOKEN } = require('./config')
-const { request, split } = require('./helper')
+const { PORT, API_SECRET_64 } = require('./config')
+const { request, split, filterUser } = require('./helper')
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`)
@@ -77,10 +77,12 @@ app.get('/usersLookup', (req, res) => {
     followers_count !== 0
     friends_count !== 0
   */
-  const filter = 'soft'
-  request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=nogueras_marta`)
+  const userName = 'twitter'
+  const filter = 'hard'
+  request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=${userName}`)
   .then(response => {
-    console.log(response.data)
+    console.log('User filtered', filterUser(response.data[0], filter))
+    // console.log(response.data)
     res.send(response.data)
   })
   .catch(err => console.log({err}))
