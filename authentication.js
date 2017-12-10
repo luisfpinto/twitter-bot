@@ -2,6 +2,7 @@ const express = require('express')
 var router = express.Router()
 const OAuth = require('oauth').OAuth
 const axios = require('axios')
+const randomstring = require('randomstring')
 const { API_KEY, API_SECRET, callbackURL, API_SECRET_64 } = require('./config')
 
 // This function allow us to authenticate a twitter user using Oauth
@@ -29,7 +30,7 @@ router.get('/login', (req, res) => {
 
 // Function to login twitter user using OAuth
 router.get('/connect', (req, res) => {
-  console.log('Connect')
+  console.log('Connecting to Twitter')
   oAuth.getOAuthRequestToken((error, oauthToken, oauthTokenSecret) => {
     if (error) {
       res.send(error)
@@ -43,16 +44,36 @@ router.get('/connect', (req, res) => {
 
 // Callback url. This is set in the app setting of the twitter web dashboard
 router.get('/callback', function (req, res) {
-  console.log('Callback')
+  console.log('Successfully Logged in Twitter')
   oAuth.getOAuthAccessToken(req.session.oauthRequestToken, req.session.oauthRequestTokenSecret, req.query.oauth_verifier, (error, oauthAccessToken, oauthAccessTokenSecret) => {
     if (error) {
       res.send(error)
     } else {
       req.session.oauthAccessToken = oauthAccessToken
       req.session.oauthAccessTokenSecret = oauthAccessTokenSecret
-      res.redirect('/')
+      res.redirect('/follow')
     }
   })
+})
+
+router.get('/signature', (req, res) => {
+  console.log('Getting signature')
+  // const oauthNonce = randomstring.generate().toString('base64') // this must be a radom string
+  // const timestamp = Date.now()
+  // const signatureConfig = [`include_entities=true&oauth_consumer_key="${API_KEY}"&oauth_nonce="${oauthNonce}"&oauth_signature_method="HMAC-SHA1"&oauth_timestamp ="${timestamp}"&oauth_token ="${req.session.oauthAccessToken}"&oauth_version="1.0"`]
+  // console.log(signatureConfig)
+  // axios({
+  //   method: 'POST',
+  //   url: `https://api.twitter.com/1.1/statuses/update.json`,
+  //   headers: {
+  //     'Authorization': `OAuth ${signatureConfig}`
+  //   }
+  // })
+  // .then(response => {
+  //   console.log('Sucess')
+  //   console.log(response.data)
+  // })
+  // .catch(err => res.send(err.response.data))
 })
 
 // Get the access token
@@ -76,4 +97,4 @@ router.get('/getAccessToken', (req, res) => {
   .catch(err => console.log(err.response))
 })
 
-module.exports = router
+module.exports = { router, oAuth }

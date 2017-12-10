@@ -1,11 +1,11 @@
 const express = require('express')
 var session = require('express-session')
 const app = express()
-const auth = require('./authentication')
+const { router, oAuth } = require('./authentication')
 const axios = require('axios')
-var randomstring = require("randomstring")
+const randomstring = require('randomstring')
 
-const { PORT, secret, API_KEY, ACCESS_TOKEN } = require('./config')
+const { PORT, secret, API_KEY } = require('./config')
 const { request, split, filterUser } = require('./helper')
 
 app.use(session({
@@ -15,7 +15,7 @@ app.use(session({
   cookie: { secure: false } // Set this to false to allow using non https hosts
 }))
 
-app.use('/auth', auth)
+app.use('/auth', router)
 app.use(express.static('public'))
 
 app.listen(PORT, () => {
@@ -25,13 +25,9 @@ app.listen(PORT, () => {
 let user = {} // Here is where we store the information about the user I'm looking for
 let followers = {} // Here is where we store the information about the user's followers
 
-app.use('*', (req, res) => {
-  res.send('Forbidden')
-})
-
 // Get the userId of {user}
 app.get('/userId', (req, res) => {
-  const name = req.params.user || 'twitter'
+  const name = req.params.user || 'twitter'
   request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=${name}`)
   .then(response => {
     user = {
@@ -70,41 +66,25 @@ app.get('/usersLookup', (req, res) => {
 })
 
 // Follow a user by userId
-// app.get('/follow', (req, res) => {
-//   const userId = 783214
-//   request('POST', `https://api.twitter.com/1.1/friendships/create.json?user_id=${userId}&follow=true`)
-//   .then(response => {
-//     console.log('User followed', userId)
-//     console.log(response.data)
-//     res.send(response.data)
-//   })
-//   .catch(err => console.log(err.response.data))
-// })
 
 app.get('/follow', (req, res) => {
-  const userId = 783214
-  const oauthNonce = randomstring.generate().toString('base64') // this must be a radom string
-  const timestamp = Date.now()
-  const OAuthConfig = [
-    `OAuth oauth_consumer_key= ${API_KEY}`,
-    `oauth_nonce= ${oauthNonce}`,
-    `oauth_signature = `, // missing this
-    'oauth_signature_method=HMAC-SHA1',
-    `oauth_timestamp = ${timestamp}`,
-    `oauth_token = ${req.session.oauthAccessToken}`,
-    'oauth_version=1.0'
-  ]
-
-  axios({
-    method: 'POST',
-    url: `https://api.twitter.com/1.1/friendships/create.json?user_id=${userId}&follow=true`,
-    headers: {
-      'Authorization': `OAuth ${OAuthConfig}`
+  const params = {
+    user_id: '783214'
+  }
+  oAuth.post('https://api.twitter.com/1.1/friendships/create.json', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret, params, (error, data, response) => {
+    if (error) { // There will be an error if the user is not logged in
+      console.log(error)
+      res.send(error)
+    } else {
+      var dataJson = JSON.parse(data)
+      if (dataJson.following === true) {
+        console.log(`Following user${dataJson.screen_name}`)
+        res.send(`Following ${dataJson.screen_name}`)
+      }
     }
   })
-  .then(data => {
-    console.log('Sucess')
-    console.log(data)
-  })
-  .catch(err => console.log(err))
+})
+
+app.use('*', (req, res) => {
+  res.send('Forbidden')
 })
