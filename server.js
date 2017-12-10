@@ -2,10 +2,8 @@ const express = require('express')
 var session = require('express-session')
 const app = express()
 const { router, oAuth } = require('./authentication')
-const axios = require('axios')
-const randomstring = require('randomstring')
 
-const { PORT, secret, API_KEY } = require('./config')
+const { PORT, secret} = require('./config')
 const { request, split, filterUser } = require('./helper')
 
 app.use(session({
