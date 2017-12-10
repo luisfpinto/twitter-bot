@@ -3,8 +3,9 @@ var session = require('express-session')
 const app = express()
 const { router, oAuth } = require('./authentication')
 
-const { PORT, secret} = require('./config')
+const { PORT, secret } = require('./config')
 const { request, split, filterUser } = require('./helper')
+const { User } = require('./user')
 
 app.use(session({
   secret,
@@ -57,7 +58,6 @@ app.get('/usersLookup', (req, res) => {
   request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=${userName}`)
   .then(response => {
     console.log('User filtered', filterUser(response.data[0], filter))
-    // console.log(response.data)
     res.send(response.data)
   })
   .catch(err => console.log({err}))
@@ -86,3 +86,8 @@ app.get('/follow', (req, res) => {
 app.use('*', (req, res) => {
   res.send('Forbidden')
 })
+
+let twitterUser = new User('twitter', 'hard')
+twitterUser.getUser()
+.then(data => console.log('Finished'))
+.catch(err => console.log(err))

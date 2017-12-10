@@ -2,7 +2,6 @@ const express = require('express')
 var router = express.Router()
 const OAuth = require('oauth').OAuth
 const axios = require('axios')
-const randomstring = require('randomstring')
 const { API_KEY, API_SECRET, callbackURL, API_SECRET_64 } = require('./config')
 
 // This function allow us to authenticate a twitter user using Oauth
@@ -51,29 +50,9 @@ router.get('/callback', function (req, res) {
     } else {
       req.session.oauthAccessToken = oauthAccessToken
       req.session.oauthAccessTokenSecret = oauthAccessTokenSecret
-      res.redirect('/follow')
+      res.redirect('/')
     }
   })
-})
-
-router.get('/signature', (req, res) => {
-  console.log('Getting signature')
-  // const oauthNonce = randomstring.generate().toString('base64') // this must be a radom string
-  // const timestamp = Date.now()
-  // const signatureConfig = [`include_entities=true&oauth_consumer_key="${API_KEY}"&oauth_nonce="${oauthNonce}"&oauth_signature_method="HMAC-SHA1"&oauth_timestamp ="${timestamp}"&oauth_token ="${req.session.oauthAccessToken}"&oauth_version="1.0"`]
-  // console.log(signatureConfig)
-  // axios({
-  //   method: 'POST',
-  //   url: `https://api.twitter.com/1.1/statuses/update.json`,
-  //   headers: {
-  //     'Authorization': `OAuth ${signatureConfig}`
-  //   }
-  // })
-  // .then(response => {
-  //   console.log('Sucess')
-  //   console.log(response.data)
-  // })
-  // .catch(err => res.send(err.response.data))
 })
 
 // Get the access token
