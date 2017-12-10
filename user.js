@@ -9,10 +9,9 @@ class User {
   }
   async getUser () {
     try {
-     // user.info = await this.getUserInfo(this.username)
+      user.info = await this.getUserInfo(this.username)
       user.followers = await this.checkFollowers()
-      user.filteredFollowers = await this.filterFollowers(this.filter, user.followers[0])
-      console.log('HOLA')
+      if (this.filter !== undefined) user.filteredFollowers = await this.filterFollowers(this.filter, user.followers)
       return user
     } catch (error) {
       throw error
@@ -49,16 +48,29 @@ class User {
 
   filterFollowers (filter, followers) {
     console.log('Filtering Followers')
+    let responseIndex = 0
     return new Promise((resolve, reject) => {
-      let follow = [followers[0], followers[1]]
-      console.log(follow)
-      request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=${follow}`)
-      .then(response => {
-        console.log(response)
-        console.log('User filtered', filterUser(response.data[0], filter))
-        return resolve(true)
+      let filteredUsers = []
+      console.log('Followers length', followers.length)
+      followers.map((oneHundredFollowers, index) => {
+        console.log('Filtering Followers for index', index)
+        request('GET', `https://api.twitter.com/1.1/users/lookup.json?user_id=${oneHundredFollowers}`)
+        .then(response => {
+          responseIndex = responseIndex + 1
+          console.log(responseIndex)
+          response.data.map(user => {
+            if (filterUser(user, this.filter)) {
+              // console.log('User accepted')
+              filteredUsers.push(user.id_str)
+            } // else console.log('User did not pass the filter')
+          })
+          if (responseIndex === followers.length) return resolve(filteredUsers)
+        })
+        .catch(err => {
+          console.log(err)
+          reject(err)
+        })
       })
-      .catch(err => reject(err))
     })
   }
 }

@@ -2,6 +2,7 @@ const axios = require('axios')
 const { ACCESS_TOKEN } = require('./config')
 
 const request = function (method = 'GET', url = '') {
+  // console.log('Doing Request')
   return new Promise((resolve, reject) => {
     axios({
       method,
@@ -36,26 +37,26 @@ function split (userIds) {
 }
 
 // This function will filter users based on a filer. If it doesn't pass the filter it will return false, otherwise true.
-function filterUser (user, filter) {
+function filterUser (user, filter = 'none') {
+  // console.log('Filtering Users')
   const {description, default_profile_image, statuses_count,
   followers_count, friends_count} = user
   let penalty = 0
   if (description === '') penalty++
   if (default_profile_image === true) penalty++
-  if (statuses_count < 100) penalty++
+  if (statuses_count < 50) penalty++
   if (followers_count < 20) penalty++
-  if (friends_count < 200) penalty++
-
+  if (friends_count < 150) penalty++
   switch (filter) {
     case 'soft':
       if (penalty >= 4) return false
-      break
+      else return true
     case 'medium':
       if (penalty >= 3) return false
-      break
+      else return true
     case 'hard':
       if (penalty >= 1) return false
-      break
+      else return true
     default:
       return true
   }

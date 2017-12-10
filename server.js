@@ -87,7 +87,7 @@ app.use('*', (req, res) => {
   res.send('Forbidden')
 })
 
-let twitterUser = new User('twitter', 'hard')
+let twitterUser = new User('luisfpinto_', 'soft')
 twitterUser.getUser()
-.then(data => console.log('Finished'))
-.catch(err => console.log(err))
+.then(data => console.log('Finishing'))
+.catch(err => console.log(err.response.data))
