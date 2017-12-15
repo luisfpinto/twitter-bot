@@ -1,4 +1,5 @@
 const { request, split, filterUser } = require('./helper')
+const { oAuth } = require('./api/authentication')
 let user = {}
 
 class User {
@@ -76,17 +77,33 @@ class User {
     })
   }
 
-  follow (userId, credentials, oAuth) {
+  follow (userId, oauthAccessToken, oauthAccessTokenSecret) {
     return new Promise((resolve, reject) => {
-      oAuth.post('https://api.twitter.com/1.1/friendships/create.json', credentials.oauthAccessToken, credentials.oauthAccessTokenSecret, {user_id: userId}, (error, data, response) => {
+      oAuth.post('https://api.twitter.com/1.1/friendships/create.json', oauthAccessToken, oauthAccessTokenSecret, {user_id: userId, follow: true}, (error, data, response) => {
         if (error) { // There will be an error if the user is not logged in
           console.log(error)
           reject(error)
         } else {
           var dataJson = JSON.parse(data)
+          console.log(`Following user${dataJson.screen_name}`)
           if (dataJson.following === true) {
-            console.log(`Following user${dataJson.screen_name}`)
+            console.log(`Already following user${dataJson.screen_name}`)
+            resolve()
           }
+        }
+      })
+    })
+  }
+
+  unfollow (userId, oauthAccessToken, oauthAccessTokenSecret) {
+    return new Promise((resolve, reject) => {
+      oAuth.post('https://api.twitter.com/1.1/friendships/destroy.json', oauthAccessToken, oauthAccessTokenSecret, {user_id: userId}, (error, data, response) => {
+        if (error) { // There will be an error if the user is not logged in
+          console.log(error)
+          reject(error)
+        } else {
+          var dataJson = JSON.parse(data)
+          console.log(`Unfollowing user${dataJson.screen_name}`)
         }
       })
     })

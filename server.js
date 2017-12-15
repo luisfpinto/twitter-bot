@@ -28,6 +28,8 @@ app.get('/follow', (req, res) => {
       console.log('User', data.userName)
       console.log('Number of followers', data.numFollowers)
       console.log('Filtered followers', data.filteredFollowers.length)
+      twitterUser.follow('783214', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
+      .then(res.send())
     })
     .catch(err => console.log(err.response.data))
   } else {
