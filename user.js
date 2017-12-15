@@ -1,5 +1,4 @@
 const { request, split, filterUser } = require('./helper')
-
 let user = {}
 
 class User {
@@ -7,23 +6,26 @@ class User {
     this.userName = userName
     this.filter = filter
   }
+
+  // This function will manage all the process to get the followers of an account
   async getUser () {
     try {
-      user.info = await this.getUserInfo(this.username)
+      console.log('Filter', this.filter)
+      user = await this.getUserInfo(this.username)
       user.followers = await this.checkFollowers()
-      if (this.filter !== undefined) user.filteredFollowers = await this.filterFollowers(this.filter, user.followers)
+      user.filteredFollowers = await this.filterFollowers(this.filter, user.followers)
       return user
     } catch (error) {
       throw error
     }
   }
+
+  // This function provides the whole information we want to get the followers from
   getUserInfo () {
     console.log('Getting user info')
     return new Promise((resolve, reject) => {
       request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=${this.userName}`)
       .then(response => {
-        user.userId = response.data[0].id_str
-        user.numFollowers = response.data[0].followers_count
         return resolve({
           userName: this.userName,
           userId: response.data[0].id_str,
@@ -34,6 +36,7 @@ class User {
     })
   }
 
+  // This function will get all the followers information
   checkFollowers () {
     console.log('Checking followers')
     return new Promise((resolve, reject) => {
@@ -46,23 +49,22 @@ class User {
     })
   }
 
+  // This function will filter the followers of an account based on a filter
   filterFollowers (filter, followers) {
     console.log('Filtering Followers')
     let responseIndex = 0
     return new Promise((resolve, reject) => {
       let filteredUsers = []
-      console.log('Followers length', followers.length)
       followers.map((oneHundredFollowers, index) => {
-        console.log('Filtering Followers for index', index)
         request('GET', `https://api.twitter.com/1.1/users/lookup.json?user_id=${oneHundredFollowers}`)
         .then(response => {
           responseIndex = responseIndex + 1
-          console.log(responseIndex)
           response.data.map(user => {
-            if (filterUser(user, this.filter)) {
-              // console.log('User accepted')
+            if (filterUser(user, this.filter) && this.filter !== undefined) { // If filter is undefined then all followers are in the filtered followers list
               filteredUsers.push(user.id_str)
-            } // else console.log('User did not pass the filter')
+            } else if (this.filter === undefined) {
+              filteredUsers.push(user.id_str)
+            }
           })
           if (responseIndex === followers.length) return resolve(filteredUsers)
         })
@@ -70,6 +72,22 @@ class User {
           console.log(err)
           reject(err)
         })
+      })
+    })
+  }
+
+  follow (userId, credentials, oAuth) {
+    return new Promise((resolve, reject) => {
+      oAuth.post('https://api.twitter.com/1.1/friendships/create.json', credentials.oauthAccessToken, credentials.oauthAccessTokenSecret, {user_id: userId}, (error, data, response) => {
+        if (error) { // There will be an error if the user is not logged in
+          console.log(error)
+          reject(error)
+        } else {
+          var dataJson = JSON.parse(data)
+          if (dataJson.following === true) {
+            console.log(`Following user${dataJson.screen_name}`)
+          }
+        }
       })
     })
   }

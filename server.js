@@ -1,7 +1,7 @@
 const express = require('express')
 var session = require('express-session')
 const app = express()
-const { router, oAuth } = require('./authentication')
+const { router } = require('./api/authentication')
 
 const { PORT, secret } = require('./config')
 const { User } = require('./user')
@@ -20,33 +20,23 @@ app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`)
 })
 
-// Follow a user by userId
-
 app.get('/follow', (req, res) => {
-  const params = {
-    user_id: '783214'
+  if (req.session.oauthAccessToken) {
+    let twitterUser = new User('luisfpinto_')
+    twitterUser.getUser()
+    .then(data => {
+      console.log('User', data.userName)
+      console.log('Number of followers', data.numFollowers)
+      console.log('Filtered followers', data.filteredFollowers.length)
+    })
+    .catch(err => console.log(err.response.data))
+  } else {
+    res.status(500).send('User not logged in')
   }
-  oAuth.post('https://api.twitter.com/1.1/friendships/create.json', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret, params, (error, data, response) => {
-    if (error) { // There will be an error if the user is not logged in
-      console.log(error)
-      res.send(error)
-    } else {
-      var dataJson = JSON.parse(data)
-      if (dataJson.following === true) {
-        console.log(`Following user${dataJson.screen_name}`)
-        res.send(`Following ${dataJson.screen_name}`)
-      }
-    }
-  })
 })
 
 app.use('*', (req, res) => {
   res.send('Forbidden')
 })
-
-let twitterUser = new User('luisfpinto_', 'soft')
-twitterUser.getUser()
-.then(data => console.log('Finishing'))
-.catch(err => console.log(err.response.data))
 
 module.exports = { app }

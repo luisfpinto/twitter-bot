@@ -2,7 +2,7 @@ const express = require('express')
 var router = express.Router()
 const OAuth = require('oauth').OAuth
 const axios = require('axios')
-const { API_KEY, API_SECRET, callbackURL, API_SECRET_64 } = require('./config')
+const { API_KEY, API_SECRET, callbackURL, API_SECRET_64 } = require('../config')
 
 // This function allow us to authenticate a twitter user using Oauth
 const oAuth = new OAuth(
@@ -43,7 +43,7 @@ router.get('/connect', (req, res) => {
 
 // Callback url. This is set in the app setting of the twitter web dashboard
 router.get('/callback', function (req, res) {
-  console.log('Successfully Logged in Twitter')
+  console.log('Successfully Logged in Twitter-Bot')
   oAuth.getOAuthAccessToken(req.session.oauthRequestToken, req.session.oauthRequestTokenSecret, req.query.oauth_verifier, (error, oauthAccessToken, oauthAccessTokenSecret) => {
     if (error) {
       res.send(error)

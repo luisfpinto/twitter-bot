@@ -13,4 +13,18 @@ $(document).ready(function () {
       type: 'GET'
     })
   })
+
+  $( "#follow" ).click(function () {
+    $.ajax({
+      url: 'http://localhost:9090/follow',
+      crossDomain: true,
+      error: function (error) {
+        $('#info').html(`<p style="color:red">An error has occurred: ${error.responseText}</p>`)
+      },
+      success: function (data) {
+       $('#info').html('<p style="color:Green">Following users</p>')
+      },
+      type: 'GET'
+    })
+  })
 })
