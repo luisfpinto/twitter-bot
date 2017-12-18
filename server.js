@@ -1,8 +1,9 @@
 const express = require('express')
 var session = require('express-session')
 const app = express()
-const { router } = require('./api/authentication')
+var bodyParser = require('body-parser')
 
+const { router } = require('./api/authentication')
 const { PORT, secret } = require('./config')
 const { User } = require('./user')
 
@@ -15,14 +16,22 @@ app.use(session({
 
 app.use('/auth', router)
 app.use(express.static('public'))
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`)
 })
 
+let twitterUser
+
 app.get('/follow', (req, res) => {
+  let user = req.query.user
+  let filter = req.query.filter
+  console.log('User', user)
+  console.log('Filter', filter)
   if (req.session.oauthAccessToken) {
-    let twitterUser = new User('luisfpinto_')
+    twitterUser = new User(user, filter)
     twitterUser.getUser()
     .then(data => {
       console.log('User', data.userName)
@@ -31,6 +40,16 @@ app.get('/follow', (req, res) => {
       twitterUser.follow('783214', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
       .then(res.send())
     })
+    .catch(err => console.log(err.response.data))
+  } else {
+    res.status(500).send('User not logged in')
+  }
+})
+
+app.get('/unfollow', (req, res) => {
+  if (req.session.oauthAccessToken) {
+    twitterUser.unfollow('783214', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
+    .then(res.send())
     .catch(err => console.log(err.response.data))
   } else {
     res.status(500).send('User not logged in')
