@@ -18,10 +18,9 @@ $(document).ready(function () {
     let user = $("#user").val()
     let filter = $("#filter").val()
     $.ajax({
-      type: 'GET',
+      type: 'POST',
       url: 'http://localhost:9090/follow',
       crossDomain: true,
-      contentType: 'application/json',
       data: {
         user,
         filter
@@ -31,14 +30,13 @@ $(document).ready(function () {
       },
       success: function (data) {
        $('#info').html('<p style="color:Green">Following users</p>')
-      },
-      type: 'GET'
+      }
     })
   })
 
   $( "#unfollow" ).click(function () {
     $.ajax({
-      type: 'GET',
+      type: 'POST',
       url: 'http://localhost:9090/unfollow',
       crossDomain: true,
       error: function (error) {
@@ -46,8 +44,7 @@ $(document).ready(function () {
       },
       success: function (data) {
        $('#info').html('<p style="color:Green">Unfollowing users</p>')
-      },
-      type: 'GET'
+      }
     })
   })
 })

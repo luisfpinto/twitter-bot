@@ -16,8 +16,7 @@ app.use(session({
 
 app.use('/auth', router)
 app.use(express.static('public'))
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({ extended: true }))
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`)
@@ -25,9 +24,9 @@ app.listen(PORT, () => {
 
 let twitterUser
 
-app.get('/follow', (req, res) => {
-  let user = req.query.user
-  let filter = req.query.filter
+app.post('/follow', (req, res) => {
+  let user = req.body.user
+  let filter = req.body.filter
   console.log('User', user)
   console.log('Filter', filter)
   if (req.session.oauthAccessToken) {
@@ -46,7 +45,7 @@ app.get('/follow', (req, res) => {
   }
 })
 
-app.get('/unfollow', (req, res) => {
+app.post('/unfollow', (req, res) => {
   if (req.session.oauthAccessToken) {
     twitterUser.unfollow('783214', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
     .then(res.send())
