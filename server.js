@@ -27,19 +27,20 @@ let twitterUser
 app.post('/follow', (req, res) => {
   let user = req.body.user
   let filter = req.body.filter
-  console.log('User', user)
-  console.log('Filter', filter)
   if (req.session.oauthAccessToken) {
     twitterUser = new User(user, filter)
     twitterUser.getUser()
     .then(data => {
       console.log('User', data.userName)
       console.log('Number of followers', data.numFollowers)
-      console.log('Filtered followers', data.filteredFollowers.length)
-      twitterUser.follow('783214', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
-      .then(res.send())
+      // console.log('Filtered followers', data.filteredFollowers.length)
+      // twitterUser.follow('783214', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
+      .then(res.status(200))
     })
-    .catch(err => console.log(err.response.data))
+    .catch(err => {
+      console.log(err)
+      res.status(500).send(`Error in the request. See status on the server for more info`)
+    })
   } else {
     res.status(500).send('User not logged in')
   }

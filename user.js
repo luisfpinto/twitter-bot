@@ -1,6 +1,8 @@
 const { request, split, filterUser } = require('./helper')
 const { oAuth } = require('./api/authentication')
-let user = {}
+
+let user
+let cursor = -1 // we use this variable for the checkFollowers function to go through all our users see more https://developer.twitter.com/en/docs/basics/cursoring checkFollowers()
 
 class User {
   constructor (userName, filter) {
@@ -11,13 +13,12 @@ class User {
   // This function will manage all the process to get the followers of an account
   async getUser () {
     try {
-      console.log('Filter', this.filter)
-      user = await this.getUserInfo(this.username)
-      user.followers = await this.checkFollowers()
-      user.filteredFollowers = await this.filterFollowers(this.filter, user.followers)
+      user = await this.getUserInfo()
+      user.followersArray = await this.checkFollowers()
+      // user.filteredFollowers = await this.filterFollowers(this.filter, user.followers)
       return user
-    } catch (error) {
-      throw error
+    } catch (err) {
+      throw err
     }
   }
 
@@ -37,16 +38,26 @@ class User {
     })
   }
 
-  // This function will get all the followers information
+  // This function will get all the followers information and it will return an array of 100 users arrays. Limited to 5000 Followers. Need to use cursoring
   checkFollowers () {
     console.log('Checking followers')
     return new Promise((resolve, reject) => {
-      request('GET', `https://api.twitter.com/1.1/followers/ids.json?cursor=-1&screen_name=${this.userName}&count=${this.numFollowers}`)
+      request('GET', `https://api.twitter.com/1.1/followers/ids.json?cursor=${cursor}&screen_name=${this.userName}&count=${this.numFollowers}`)
       .then(response => {
-        let followers = split(response.data.ids)
-        return resolve(followers)
+        if (response.data['next_cursor'] === 0) {
+          user.followersRaw.push(response.data.ids)
+          let followers = split(user.followersRaw)
+          return resolve(followers)
+        } else {
+          cursor === -1 ? user.followersRaw = response.data.ids : user.followersRaw.push.apply(user.followersRaw, response.data.ids)
+          cursor = response.data['next_cursor']
+          resolve(this.checkFollowers(cursor)) // in order to use recursive promises we need to resolve each promise
+        }
       })
-      .catch(err => reject(err))
+      .catch(err => {
+        console.log('ERRRRR')
+        reject(err)
+      })
     })
   }
 
