@@ -27,6 +27,7 @@ let twitterUser
 app.post('/follow', (req, res) => {
   let user = req.body.user
   let filter = req.body.filter
+  let maxFollows = 100 // Maximun number of follows in a hour
   if (req.session.oauthAccessToken) {
     twitterUser = new User(user, filter)
     twitterUser.getUser()
@@ -35,12 +36,13 @@ app.post('/follow', (req, res) => {
       console.log('Number of followers', data.numFollowers)
       console.log('Followers', data.followers.length)
       console.log('NumofFollowersRAW', data.followersRaw.length)
-      console.log('Filtered followers', data.filteredFollowers.length)
-      // twitterUser.follow('783214', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
+      console.log('Filtered followers', data.followers.length)
+      twitterUser.follow(data.followers, req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
+      // twitterUser.followOneUser('XXXXXIDXXXXX', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
       return res.status(200)
     })
     .catch(err => {
-      // console.log(err)
+      console.log(err)
       res.status(500).send(`Error in the request. See status on the server for more info`)
     })
   } else {
