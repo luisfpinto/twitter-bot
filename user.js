@@ -1,5 +1,6 @@
 const { request, split, filterUser } = require('./helper')
 const { oAuth } = require('./api/authentication')
+const Promise = require('bluebird')
 
 let user
 let cursor = -1 // we use this variable for the checkFollowers function to go through all our users see more https://developer.twitter.com/en/docs/basics/cursoring checkFollowers()
@@ -14,8 +15,8 @@ class User {
   async getUser () {
     try {
       user = await this.getUserInfo()
-      user.followersArray = await this.checkFollowers()
-      // user.filteredFollowers = await this.filterFollowers(this.filter, user.followers)
+      user.followers = await this.checkFollowers()
+      user.filteredFollowers = await this.filterFollowers(this.filter, user.followers)
       return user
     } catch (err) {
       throw err
@@ -45,9 +46,9 @@ class User {
       request('GET', `https://api.twitter.com/1.1/followers/ids.json?cursor=${cursor}&screen_name=${this.userName}&count=${this.numFollowers}`)
       .then(response => {
         if (response.data['next_cursor'] === 0) {
-          user.followersRaw.push(response.data.ids)
-          let followers = split(user.followersRaw)
-          return resolve(followers)
+          if (!user.followersRaw) user.followersRaw = response.data.ids
+          else user.followersRaw.push.apply(user.followersRaw, response.data.ids)
+          return resolve(split(user.followersRaw))
         } else {
           cursor === -1 ? user.followersRaw = response.data.ids : user.followersRaw.push.apply(user.followersRaw, response.data.ids)
           cursor = response.data['next_cursor']
@@ -55,7 +56,7 @@ class User {
         }
       })
       .catch(err => {
-        console.log('ERRRRR')
+        console.log('ERRRRR on CheckFollowers')
         reject(err)
       })
     })
@@ -74,7 +75,7 @@ class User {
           response.data.map(user => {
             if (filterUser(user, this.filter) && this.filter !== undefined) { // If filter is undefined then all followers are in the filtered followers list
               filteredUsers.push(user.id_str)
-            } else if (this.filter === undefined) {
+            } else {
               filteredUsers.push(user.id_str)
             }
           })

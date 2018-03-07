@@ -33,9 +33,11 @@ app.post('/follow', (req, res) => {
     .then(data => {
       console.log('User', data.userName)
       console.log('Number of followers', data.numFollowers)
-      // console.log('Filtered followers', data.filteredFollowers.length)
+      console.log('Followers', data.followers.length)
+      console.log('NumofFollowersRAW', data.followersRaw.length)
+      console.log('Filtered followers', data.filteredFollowers.length)
       // twitterUser.follow('783214', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
-      .then(res.status(200))
+      return res.status(200)
     })
     .catch(err => {
       console.log(err)

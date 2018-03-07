@@ -18,7 +18,6 @@ const oAuth = new OAuth(
 router.get('/login', (req, res) => {
   oAuth.get('https://api.twitter.com/1.1/account/verify_credentials.json', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret, (error, data, response) => {
     if (error) { // There will be an error if the user is not logged in
-      console.log(error)
       res.redirect('/auth/connect')
     } else {
       console.log('Already signed in')
