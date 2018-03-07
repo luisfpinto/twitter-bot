@@ -1,9 +1,11 @@
 const { request, split, filterUser } = require('./helper')
 const { oAuth } = require('./api/authentication')
 const Promise = require('bluebird')
+var fs = require('fs')
 
 let user
 let cursor = -1 // we use this variable for the checkFollowers function to go through all our users see more https://developer.twitter.com/en/docs/basics/cursoring checkFollowers()
+let maxGetRequest = 15 // Maximum number of requests in 15 minutes
 
 class User {
   constructor (userName, filter) {
@@ -15,8 +17,10 @@ class User {
   async getUser () {
     try {
       user = await this.getUserInfo()
+      console.log('USER', user)
       user.followers = await this.checkFollowers()
-      user.filteredFollowers = await this.filterFollowers(this.filter, user.followers)
+      // user.filteredFollowers = await this.filterFollowers(this.filter, user.followers)
+      fs.writeFile(`./data/${user.userName}`, JSON.stringify(user), 'utf8')
       return user
     } catch (err) {
       throw err
@@ -29,6 +33,7 @@ class User {
     return new Promise((resolve, reject) => {
       request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=${this.userName}`)
       .then(response => {
+        maxGetRequest--
         return resolve({
           userName: this.userName,
           userId: response.data[0].id_str,
@@ -43,48 +48,31 @@ class User {
   checkFollowers () {
     console.log('Checking followers')
     return new Promise((resolve, reject) => {
-      request('GET', `https://api.twitter.com/1.1/followers/ids.json?cursor=${cursor}&screen_name=${this.userName}&count=${this.numFollowers}`)
+      console.log('Checking follower in Promise')
+      request('GET', `https://api.twitter.com/1.1/followers/list.json?cursor=${cursor}&screen_name=${this.userName}`)
       .then(response => {
+        maxGetRequest--
         if (response.data['next_cursor'] === 0) {
-          if (!user.followersRaw) user.followersRaw = response.data.ids
-          else user.followersRaw.push.apply(user.followersRaw, response.data.ids)
-          return resolve(split(user.followersRaw))
+          if (!user.followersRaw) user.followersRaw = response.data.users
+          else user.followersRaw.push.apply(user.followersRaw, response.data.users)
+          fs.writeFile(`./data/${user.userName}`, JSON.stringify(user), 'utf8')
+          return filterUser(user.followersRaw, this.filter)
         } else {
-          cursor === -1 ? user.followersRaw = response.data.ids : user.followersRaw.push.apply(user.followersRaw, response.data.ids)
+          console.log(maxGetRequest)
+          cursor === -1 ? user.followersRaw = response.data.users : user.followersRaw.push.apply(user.followersRaw, response.data.users)
           cursor = response.data['next_cursor']
-          resolve(this.checkFollowers(cursor)) // in order to use recursive promises we need to resolve each promise
+          console.log(user.followersRaw.length)
+          let delay = 1000
+          if (maxGetRequest === 0) {
+            delay = 5000
+            maxGetRequest = 15
+          }
+          return Promise.delay(delay).then(() => resolve(this.checkFollowers(cursor)))
         }
       })
       .catch(err => {
-        console.log('ERRRRR on CheckFollowers')
+        console.log('ERRRRR on CheckFollowers', err)
         reject(err)
-      })
-    })
-  }
-
-  // This function will filter the followers of an account based on a filter
-  filterFollowers (filter, followers) {
-    console.log('Filtering Followers')
-    let responseIndex = 0
-    return new Promise((resolve, reject) => {
-      let filteredUsers = []
-      followers.map((oneHundredFollowers, index) => {
-        request('GET', `https://api.twitter.com/1.1/users/lookup.json?user_id=${oneHundredFollowers}`)
-        .then(response => {
-          responseIndex = responseIndex + 1
-          response.data.map(user => {
-            if (filterUser(user, this.filter) && this.filter !== undefined) { // If filter is undefined then all followers are in the filtered followers list
-              filteredUsers.push(user.id_str)
-            } else {
-              filteredUsers.push(user.id_str)
-            }
-          })
-          if (responseIndex === followers.length) return resolve(filteredUsers)
-        })
-        .catch(err => {
-          console.log(err)
-          reject(err)
-        })
       })
     })
   }

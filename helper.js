@@ -37,29 +37,34 @@ function split (userIds) {
 }
 
 // This function will filter users based on a filer. If it doesn't pass the filter it will return false, otherwise true.
-function filterUser (user, filter = 'none') {
-  // console.log('Filtering Users')
-  const {description, default_profile_image, statuses_count,
-  followers_count, friends_count} = user
-  let penalty = 0
-  if (description === '') penalty++
-  if (default_profile_image === true) penalty++
-  if (statuses_count < 50) penalty++
-  if (followers_count < 20) penalty++
-  if (friends_count < 150) penalty++
-  switch (filter) {
-    case 'soft':
-      if (penalty >= 4) return false
-      else return true
-    case 'medium':
-      if (penalty >= 3) return false
-      else return true
-    case 'hard':
-      if (penalty >= 1) return false
-      else return true
-    default:
-      return true
-  }
+function filterUser (users, filter) {
+  if (!filter) return users
+  console.log('Filtering Users')
+  let usersFiltered = users.map(user => {
+    const {description, default_profile_image, statuses_count,
+      followers_count, friends_count} = user
+    let penalty = 0
+    if (description === '') penalty++
+    if (default_profile_image === true) penalty++
+    if (statuses_count < 50) penalty++
+    if (followers_count < 20) penalty++
+    if (friends_count < 150) penalty++
+    switch (filter) {
+      case 'soft':
+        if (penalty >= 4) return null
+        else return user
+      case 'medium':
+        if (penalty >= 3) return null
+        else return user
+      case 'hard':
+        if (penalty >= 1) return null
+        else return user
+      default:
+        return user
+    }
+  }).filter(r => !r)
+  console.log('USERS FILTERED LENGTH', usersFiltered.length)
+  return usersFiltered
 }
 
 module.exports = {request, split, filterUser}

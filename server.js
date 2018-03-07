@@ -40,7 +40,7 @@ app.post('/follow', (req, res) => {
       return res.status(200)
     })
     .catch(err => {
-      console.log(err)
+      // console.log(err)
       res.status(500).send(`Error in the request. See status on the server for more info`)
     })
   } else {
