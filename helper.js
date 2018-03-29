@@ -67,4 +67,16 @@ function filterUser (users, filter) {
   return usersFiltered
 }
 
-module.exports = {request, split, filterUser}
+function matchIds (following, followers) {
+  let noFollowers = []
+  let found = false
+  following.map(followingUser => {
+    followers.map((followerUser, index) => {
+      if (followingUser.id_str === followerUser.id_str) found = true
+      if (followers.length - 1 === index && found === true) noFollowers.push(followingUser.id_str)
+    })
+  })
+  return noFollowers
+}
+
+module.exports = {request, split, filterUser, matchIds}

@@ -6,7 +6,6 @@ var bodyParser = require('body-parser')
 const { router } = require('./api/authentication')
 const { PORT, secret } = require('./config')
 const { User } = require('./user')
-
 app.use(session({
   secret,
   resave: false,
@@ -25,27 +24,29 @@ app.listen(PORT, () => {
 let twitterUser
 
 app.post('/follow', (req, res) => {
+  console.log('-------------****************-------------')
   let user = req.body.user
   let filter = req.body.filter
-  let maxFollows = 100 // Maximun number of follows in a hour
+  let realUser = req.body.realUser
   if (req.session.oauthAccessToken) {
-    twitterUser = new User(user, filter)
+    twitterUser = new User(user, filter, realUser)
     twitterUser.getUser()
     .then(data => {
       console.log('User', data.userName)
       console.log('Number of followers', data.numFollowers)
-      console.log('Followers', data.followers.length)
-      console.log('NumofFollowersRAW', data.followersRaw.length)
-      console.log('Filtered followers', data.followers.length)
-      twitterUser.follow(data.followers, req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
+      console.log('Followers', data.followingList.length)
+      console.log('NumofFollowersRAW', data.followingRaw.length)
+      console.log('Filtered followers', data.followingList.length)
+      twitterUser.follow(data.followingList, req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
       // twitterUser.followOneUser('XXXXXIDXXXXX', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
-      return res.status(200)
+      res.status(200)
     })
     .catch(err => {
       console.log(err)
       res.status(500).send(`Error in the request. See status on the server for more info`)
     })
   } else {
+    console.log('Hey')
     res.status(500).send('User not logged in')
   }
 })

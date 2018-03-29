@@ -1,24 +1,25 @@
-const { request, filterUser } = require('./helper')
+const { request, filterUser, matchIds } = require('./helper')
 const { oAuth } = require('./api/authentication')
 const Promise = require('bluebird')
 var fs = require('fs')
 
 let user
 let cursor = -1 // we use this variable for the checkFollowers function to go through all our users see more https://developer.twitter.com/en/docs/basics/cursoring checkFollowers()
-let maxGetRequest = 15 // Maximum number of requests in 15 minutes
+let rateLimitStatus
 
 class User {
-  constructor (userName, filter) {
-    this.userName = userName
+  constructor (userName, filter, realUserName) {
+    this.realUserName = realUserName // Name of the original account (My account)
+    this.userName = userName // Name of the friend we want to get the followers
     this.filter = filter
   }
 
   // This function will manage all the process to get the followers of an account
   async getUser () {
     try {
+      rateLimitStatus = await this.checkApiStatus()
       user = await this.getUserInfo()
-      await this.createOrRetrieve()
-      console.log('BIMBA')
+      await this.createOrRetrieveFollowList()
       return user
     } catch (err) {
       throw err
@@ -31,7 +32,7 @@ class User {
     return new Promise((resolve, reject) => {
       request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=${this.userName}`)
       .then(response => {
-        maxGetRequest--
+        rateLimitStatus.remaining--
         return resolve({
           userName: this.userName,
           userId: response.data[0].id_str,
@@ -42,11 +43,11 @@ class User {
     })
   }
 
-  createOrRetrieve () {
+  createOrRetrieveFollowList () {
     return new Promise((resolve, reject) => {
       fs.stat(`./data/${user.userName}`, async (stat, error) => {
         if (stat !== null) { // There aren't any filet yet
-          user.followers = await this.checkFollowers('hard')
+          user.followingList = await this.getFollowList()
           fs.writeFile(`./data/${user.userName}`, JSON.stringify(user), 'utf8')
           return resolve()
         } else {
@@ -58,33 +59,64 @@ class User {
   }
 
   // This function will get all the followers information and it will return an array of 100 users arrays. Limited to 5000 Followers. Need to use cursoring
-  checkFollowers () {
+  getFollowList () {
     console.log('Checking followers')
     return new Promise((resolve, reject) => {
-      console.log('Checking follower in Promise')
       request('GET', `https://api.twitter.com/1.1/followers/list.json?cursor=${cursor}&screen_name=${this.userName}`)
       .then(response => {
-        maxGetRequest--
+        rateLimitStatus.remaining--
         if (response.data['next_cursor'] === 0) {
-          if (!user.followersRaw) user.followersRaw = response.data.users
-          else user.followersRaw.push.apply(user.followersRaw, response.data.users)
-          const filterUserd = filterUser(user.followersRaw, this.filter)
+          if (!user.followingRaw) user.followingRaw = response.data.users
+          else user.followingRaw.push.apply(user.followingRaw, response.data.users)
+          const filterUserd = filterUser(user.followingRaw, this.filter)
           return resolve(filterUserd)
         } else {
-          console.log(maxGetRequest)
-          cursor === -1 ? user.followersRaw = response.data.users : user.followersRaw.push.apply(user.followersRaw, response.data.users)
+          console.log(rateLimitStatus.remaining)
+          console.log(user.followingRaw)
+          cursor === -1 ? user.followingRaw = response.data.users : user.followingRaw.push.apply(user.followingRaw, response.data.users)
           cursor = response.data['next_cursor']
-          console.log(user.followersRaw.length)
-          let delay = 1000
-          if (maxGetRequest === 0) {
+          console.log(user.followingRaw.length)
+          let delay = 0
+          if (rateLimitStatus.remaining === 0) {
             delay = 900000
-            maxGetRequest = 15
+            rateLimitStatus.remaining = 30
           }
-          return Promise.delay(delay).then(() => resolve(this.checkFollowers(cursor)))
+          return Promise.delay(delay).then(() => resolve(this.getFollowList(cursor)))
         }
       })
       .catch(err => {
-        console.log('ERRRRR on CheckFollowers', err)
+        console.log('ERRRRR on getting followers List', err)
+        reject(err)
+      })
+    })
+  }
+
+  getFollowersIds () {
+    return new Promise((resolve, reject) => {
+      console.log('Checking follower Ids')
+      request('GET', `https://api.twitter.com/1.1/friends/ids.json?cursor=${cursor}&screen_name=${this.realUserName}`)
+      .then(response => {
+        rateLimitStatus.remaining--
+        if (response.data['next_cursor'] === 0) {
+          if (!user.followersIds) user.followersIds = response.data.users
+          else user.followersIds.push.apply(user.followersIds, response.data.users)
+          return resolve()
+        } else {
+          console.log(rateLimitStatus.remaining)
+          console.log(user.followersIds)
+          cursor === -1 ? user.followersIds = response.data.users : user.followersIds.push.apply(user.followersIds, response.data.users)
+          cursor = response.data['next_cursor']
+          console.log(user.followersIds.length)
+          let delay = 0
+          if (rateLimitStatus.remaining === 0) {
+            delay = 900000
+            rateLimitStatus.remaining = 30
+          }
+          return Promise.delay(delay).then(() => resolve(this.getFollowersIds(cursor)))
+        }
+      })
+      .catch(err => {
+        console.log('ERRRRR on getting followers Ids', err)
         reject(err)
       })
     })
@@ -94,7 +126,7 @@ class User {
     console.log('Following')
     await users.map(async (user, index) => {
       try {
-        await Promise.delay(36000 * (index + 1))
+        await Promise.delay(36000 * (index))
         await this.followOneUser(user.id_str, oauthAccessToken, oauthAccessTokenSecret)
       } catch (error) {
         console.log(error)
@@ -117,7 +149,22 @@ class User {
     })
   }
 
-  unfollow (userId, oauthAccessToken, oauthAccessTokenSecret) {
+  async unfollow (oauthAccessToken, oauthAccessTokenSecret) {
+    try {
+      cursor = -1  // Reset cursor for the unfollow actions
+      user.followersIds = await this.getFollowersIds()
+      const noMatchedFollowingIds = matchIds(user.followingList, user.followersIds)
+      console.log('Unfollowing')
+      await noMatchedFollowingIds.map(async (user, index) => {
+        await Promise.delay(36000 * (index))
+        await this.followOneUser(user, oauthAccessToken, oauthAccessTokenSecret)
+      })
+    } catch (error) {
+      throw error
+    }
+  }
+
+  unfollowOneUser (userId, oauthAccessToken, oauthAccessTokenSecret) {
     return new Promise((resolve, reject) => {
       oAuth.post('https://api.twitter.com/1.1/friendships/destroy.json', oauthAccessToken, oauthAccessTokenSecret, {user_id: userId}, (error, data, response) => {
         if (error) { // There will be an error if the user is not logged in
@@ -128,6 +175,22 @@ class User {
           console.log(`Unfollowing user${dataJson.screen_name}`)
         }
       })
+    })
+  }
+
+  // function that will get the information about the API request limits status
+  checkApiStatus () {
+    return new Promise ((resolve, reject) => {
+      request('GET', `https://api.twitter.com/1.1/application/rate_limit_status.json?resources=followers`)
+      .then(response => {
+        let data = response.data.resources.followers['/followers/list']
+        return resolve({
+          limit: data.limit,
+          remaining: data.remaining,
+          reset: data.reset
+        })
+      })
+      .catch(err => reject(err))
     })
   }
 }
