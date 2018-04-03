@@ -66,16 +66,15 @@ class User {
       .then(response => {
         rateLimitStatus.remaining--
         if (response.data['next_cursor'] === 0) {
-          if (!user.followingRaw) user.followingRaw = response.data.users
-          else user.followingRaw.push.apply(user.followingRaw, response.data.users)
-          const filterUserd = filterUser(user.followingRaw, this.filter)
+          if (!user.followingListRaw) user.followingListRaw = response.data.users
+          else user.followingListRaw.push.apply(user.followingListRaw, response.data.users)
+          const filterUserd = filterUser(user.followingListRaw, this.filter)
           return resolve(filterUserd)
         } else {
           console.log(rateLimitStatus.remaining)
-          console.log(user.followingRaw)
-          cursor === -1 ? user.followingRaw = response.data.users : user.followingRaw.push.apply(user.followingRaw, response.data.users)
+          cursor === -1 ? user.followingListRaw = response.data.users : user.followingListRaw.push.apply(user.followingListRaw, response.data.users)
           cursor = response.data['next_cursor']
-          console.log(user.followingRaw.length)
+          console.log(user.followingListRaw.length)
           let delay = 0
           if (rateLimitStatus.remaining === 0) {
             delay = 900000
@@ -94,17 +93,17 @@ class User {
   getFollowersIds () {
     return new Promise((resolve, reject) => {
       console.log('Checking follower Ids')
-      request('GET', `https://api.twitter.com/1.1/friends/ids.json?cursor=${cursor}&screen_name=${this.realUserName}`)
+      request('GET', `https://api.twitter.com/1.1/followers/ids.json?cursor=${cursor}&screen_name=${this.realUserName}`)
       .then(response => {
         rateLimitStatus.remaining--
         if (response.data['next_cursor'] === 0) {
-          if (!user.followersIds) user.followersIds = response.data.users
-          else user.followersIds.push.apply(user.followersIds, response.data.users)
+          if (!user.followersIds) user.followersIds = response.data.ids
+          else user.followersIds.push.apply(user.followersIds, response.data.ids)
           return resolve()
         } else {
           console.log(rateLimitStatus.remaining)
           console.log(user.followersIds)
-          cursor === -1 ? user.followersIds = response.data.users : user.followersIds.push.apply(user.followersIds, response.data.users)
+          cursor === -1 ? user.followersIds = response.data.ids : user.followersIds.push.apply(user.followersIds, response.data.users)
           cursor = response.data['next_cursor']
           console.log(user.followersIds.length)
           let delay = 0
@@ -152,12 +151,12 @@ class User {
   async unfollow (oauthAccessToken, oauthAccessTokenSecret) {
     try {
       cursor = -1  // Reset cursor for the unfollow actions
-      user.followersIds = await this.getFollowersIds()
+      await this.getFollowersIds(this.realUserName)
       const noMatchedFollowingIds = matchIds(user.followingList, user.followersIds)
-      console.log('Unfollowing')
-      await noMatchedFollowingIds.map(async (user, index) => {
+      console.log('Unfollowing', noMatchedFollowingIds.length)
+      noMatchedFollowingIds.map(async (user, index) => { // Don't need that await
         await Promise.delay(36000 * (index))
-        await this.followOneUser(user, oauthAccessToken, oauthAccessTokenSecret)
+        await this.unfollowOneUser(user, oauthAccessToken, oauthAccessTokenSecret)
       })
     } catch (error) {
       throw error
@@ -165,6 +164,7 @@ class User {
   }
 
   unfollowOneUser (userId, oauthAccessToken, oauthAccessTokenSecret) {
+    console.log('Unfollowing one User')
     return new Promise((resolve, reject) => {
       oAuth.post('https://api.twitter.com/1.1/friendships/destroy.json', oauthAccessToken, oauthAccessTokenSecret, {user_id: userId}, (error, data, response) => {
         if (error) { // There will be an error if the user is not logged in

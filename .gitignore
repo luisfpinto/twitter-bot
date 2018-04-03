@@ -2,3 +2,5 @@
 config.js
 package-lock.json
 example.js
+.DS_Store
+/data/*

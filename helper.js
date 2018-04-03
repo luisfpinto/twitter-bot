@@ -68,12 +68,12 @@ function filterUser (users, filter) {
 }
 
 function matchIds (following, followers) {
-  let noFollowers = []
   let found = false
+  let noFollowers = []
   following.map(followingUser => {
     followers.map((followerUser, index) => {
-      if (followingUser.id_str === followerUser.id_str) found = true
-      if (followers.length - 1 === index && found === true) noFollowers.push(followingUser.id_str)
+      if (followingUser.id_str === followerUser) found = true
+      if (index + 1 === followers.length && !found) noFollowers.push(followingUser.id_str)
     })
   })
   return noFollowers

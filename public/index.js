@@ -35,10 +35,18 @@ $(document).ready(function () {
   })
 
   $( "#unfollow" ).click(function () {
+    let userName = $("#userName").val()
+    let user = $("#user").val()
+    let filter = $("#filter").val()
     $.ajax({
       type: 'POST',
       url: 'http://localhost:9090/unfollow',
       crossDomain: true,
+      data: {
+        userName,
+        user,
+        filter,
+      },
       error: function (error) {
         $('#info').html(`<p style="color:red">An error has occurred: ${error.responseText}</p>`)
       },

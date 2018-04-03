@@ -27,7 +27,7 @@ app.post('/follow', (req, res) => {
   console.log('-------------****************-------------')
   let user = req.body.user
   let filter = req.body.filter
-  let realUser = req.body.realUser
+  let realUser = req.body.userName
   if (req.session.oauthAccessToken) {
     twitterUser = new User(user, filter, realUser)
     twitterUser.getUser()
@@ -38,7 +38,6 @@ app.post('/follow', (req, res) => {
       console.log('NumofFollowersRAW', data.followingRaw.length)
       console.log('Filtered followers', data.followingList.length)
       twitterUser.follow(data.followingList, req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
-      // twitterUser.followOneUser('XXXXXIDXXXXX', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
       res.status(200)
     })
     .catch(err => {
@@ -53,9 +52,13 @@ app.post('/follow', (req, res) => {
 
 app.post('/unfollow', (req, res) => {
   if (req.session.oauthAccessToken) {
-    twitterUser.unfollow('783214', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
-    .then(res.send())
-    .catch(err => console.log(err.response.data))
+    let twitterUser = new User(req.body.user, req.body.filter, req.body.userName)
+    twitterUser.getUser()
+    .then(() => {
+      twitterUser.unfollow(req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
+      res.status(200)
+    })
+    .catch(err => console.log(err))
   } else {
     res.status(500).send('User not logged in')
   }
