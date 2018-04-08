@@ -1,9 +1,10 @@
-const { request, filterUser, matchIds } = require('./helper')
+const { request, filterUser, matchIds, saveFollowedUser } = require('./helper')
 const { oAuth } = require('./api/authentication')
 const Promise = require('bluebird')
 var fs = require('fs')
 
-let user
+let user // User info
+let me // My account info
 let cursor = -1 // we use this variable for the checkFollowers function to go through all our users see more https://developer.twitter.com/en/docs/basics/cursoring checkFollowers()
 let rateLimitStatus
 
@@ -18,8 +19,9 @@ class User {
   async getUser () {
     try {
       rateLimitStatus = await this.checkApiStatus()
-      user = await this.getUserInfo()
-      await this.createOrRetrieveFollowList()
+      user = await this.getUserInfo(this.userName)
+      me = await this.getUserInfo(this.realUserName)
+      await this.createOrRetrieveFollowersList()
       return user
     } catch (err) {
       throw err
@@ -27,10 +29,10 @@ class User {
   }
 
   // This function provides the whole information we want to get the followers from
-  getUserInfo () {
+  getUserInfo (user) {
     console.log('Getting user info')
     return new Promise((resolve, reject) => {
-      request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=${this.userName}`)
+      request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=${user}`)
       .then(response => {
         rateLimitStatus.remaining--
         return resolve({
@@ -43,11 +45,11 @@ class User {
     })
   }
 
-  createOrRetrieveFollowList () {
+  createOrRetrieveFollowersList () {
     return new Promise((resolve, reject) => {
       fs.stat(`./data/${user.userName}`, async (stat, error) => {
         if (stat !== null) { // There aren't any filet yet
-          user.followingList = await this.getFollowList()
+          user.followingList = await this.getFollowersList()
           fs.writeFile(`./data/${user.userName}`, JSON.stringify(user), 'utf8')
           return resolve()
         } else {
@@ -59,7 +61,7 @@ class User {
   }
 
   // This function will get all the followers information and it will return an array of 100 users arrays. Limited to 5000 Followers. Need to use cursoring
-  getFollowList () {
+  getFollowersList () {
     console.log('Checking followers')
     return new Promise((resolve, reject) => {
       request('GET', `https://api.twitter.com/1.1/followers/list.json?cursor=${cursor}&screen_name=${this.userName}`)
@@ -80,11 +82,12 @@ class User {
             delay = 900000
             rateLimitStatus.remaining = 30
           }
-          return Promise.delay(delay).then(() => resolve(this.getFollowList(cursor)))
+          return Promise.delay(delay).then(() => resolve(this.getFollowersList(cursor)))
         }
       })
       .catch(err => {
-        console.log('ERRRRR on getting followers List', err)
+        console.log('ERR on getting followers List', err)
+        fs.writeFile(`./data/${user.userName}`, JSON.stringify(user), 'utf8') // Save file in case of error
         reject(err)
       })
     })
@@ -126,7 +129,7 @@ class User {
     await users.map(async (user, index) => {
       try {
         await Promise.delay(36000 * (index))
-        await this.followOneUser(user.id_str, oauthAccessToken, oauthAccessTokenSecret)
+        if (user.id_str !== me.userId) await this.followOneUser(user.id_str, oauthAccessToken, oauthAccessTokenSecret) // Avoid following myself
       } catch (error) {
         console.log(error)
       }
@@ -141,6 +144,7 @@ class User {
         } else {
           var dataJson = JSON.parse(data)
           console.log(`Following user${dataJson.screen_name}`)
+          saveFollowedUser(this.userName, dataJson.id)
           if (dataJson.following === true) console.log(`Already following user${dataJson.screen_name}`)
           return resolve()
         }
@@ -152,7 +156,8 @@ class User {
     try {
       cursor = -1  // Reset cursor for the unfollow actions
       await this.getFollowersIds(this.realUserName)
-      const noMatchedFollowingIds = matchIds(user.followingList, user.followersIds)
+      let followedList = JSON.parse(fs.readFileSync(`./data/${this.userName}_followList`, 'utf8')).followedUsers
+      const noMatchedFollowingIds = matchIds(followedList, user.followersIds)
       console.log('Unfollowing', noMatchedFollowingIds.length)
       noMatchedFollowingIds.map(async (user, index) => { // Don't need that await
         await Promise.delay(36000 * (index))

@@ -1,5 +1,6 @@
 const axios = require('axios')
 const { ACCESS_TOKEN } = require('./config')
+var fs = require('fs')
 
 const request = function (method = 'GET', url = '') {
   // console.log('Doing Request')
@@ -79,4 +80,17 @@ function matchIds (following, followers) {
   return noFollowers
 }
 
-module.exports = {request, split, filterUser, matchIds}
+function saveFollowedUser (userName, followedUser) {
+  console.log('Saving Follower', followedUser)
+  fs.stat(`./data/${userName}_followList`, async (stat, error) => {
+    if (stat !== null) { // There aren't any filet yet
+      fs.writeFile(`./data/${userName}_followList`, JSON.stringify({followedUsers: [followedUser]}), 'utf8')
+    } else {
+      let followedUsers = JSON.parse(fs.readFileSync(`./data/${userName}_followList`, 'utf8')).followedUsers
+      console.log(followedUsers)
+      followedUsers.push(followedUser)
+      fs.writeFile(`./data/${userName}_followList`, JSON.stringify({followedUsers}), 'utf8')
+    }
+  })
+}
+module.exports = {request, split, filterUser, matchIds, saveFollowedUser}

@@ -7,9 +7,12 @@ This project is about creating a twitter bot that simulates a user behaviour to 
 - [x] Unfollow an user
 - [x] Follow a list of users
 - [x] Unfollow a list of users
-- [ ] Automate picking up userName when login in 
+- [x] Save friendlist in case of error
+- [x] Create following List once we've followed someone not before
+- [x] Avoid following yourself to avoid errors
+- [x] If error follow all users I had
+- [x] Unfollow also based on following List ( Add a new filter for the unfollow process)
 - [ ] Follow a range of the user list
-- [ ] Unfollow also based on following List ( Add a new filter for the unfollow process)
 
 ## TODO
 - [ ] Tests
