@@ -9,10 +9,11 @@ let cursor = -1 // we use this variable for the checkFollowers function to go th
 let rateLimitStatus
 
 class User {
-  constructor (userName, filter, realUserName) {
+  constructor (userName, filter, realUserName, range) {
     this.realUserName = realUserName // Name of the original account (My account)
     this.userName = userName // Name of the friend we want to get the followers
     this.filter = filter
+    this.range = range // Number of people to follow
   }
 
   // This function will manage all the process to get the followers of an account
@@ -128,8 +129,11 @@ class User {
     console.log('Following')
     await users.map(async (user, index) => {
       try {
-        await Promise.delay(36000 * (index))
-        if (user.id_str !== me.userId) await this.followOneUser(user.id_str, oauthAccessToken, oauthAccessTokenSecret) // Avoid following myself
+        if (this.range > 0 && user.id_str !== me.userId) { // Avoid following myself
+          await Promise.delay(36000 * (index))
+          await this.followOneUser(user.id_str, oauthAccessToken, oauthAccessTokenSecret)
+          this.range -- // TRY THIS
+        }
       } catch (error) {
         console.log(error)
       }
@@ -144,7 +148,7 @@ class User {
         } else {
           var dataJson = JSON.parse(data)
           console.log(`Following user${dataJson.screen_name}`)
-          saveFollowedUser(this.userName, dataJson.id)
+          saveFollowedUser(this.userName, dataJson.id_str)
           if (dataJson.following === true) console.log(`Already following user${dataJson.screen_name}`)
           return resolve()
         }

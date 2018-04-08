@@ -4,6 +4,7 @@ const app = express()
 var bodyParser = require('body-parser')
 
 const { router } = require('./api/authentication')
+const { updateList } = require('./helper')
 const { PORT, secret } = require('./config')
 const { User } = require('./user')
 app.use(session({
@@ -28,8 +29,9 @@ app.post('/follow', (req, res) => {
   let user = req.body.user
   let filter = req.body.filter
   let realUser = req.body.userName
+  let range = req.body.number
   if (req.session.oauthAccessToken) {
-    twitterUser = new User(user, filter, realUser)
+    twitterUser = new User(user, filter, realUser, range)
     twitterUser.getUser()
     .then(data => {
       console.log('User', data.userName)
@@ -37,7 +39,9 @@ app.post('/follow', (req, res) => {
       console.log('Followers', data.followingList.length)
       console.log('NumofFollowersRAW', data.followingListRaw.length)
       console.log('Filtered followers', data.followingList.length)
-      twitterUser.follow(data.followingList, req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
+      let followingList = data.followingList
+      if (range) followingList = updateList(data.followingList)
+      twitterUser.follow(followingList, req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
       res.status(200)
     })
     .catch(err => {

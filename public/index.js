@@ -17,13 +17,16 @@ $(document).ready(function () {
   $( "#follow" ).click(function () {
     let user = $("#user").val()
     let filter = $("#filter").val()
+    let number = $("#number").val()
+    
     $.ajax({
       type: 'POST',
       url: 'http://localhost:9090/follow',
       crossDomain: true,
       data: {
         user,
-        filter
+        filter,
+        number
       },
       error: function (error) {
         $('#info').html(`<p style="color:red">An error has occurred: ${error.responseText}</p>`)
