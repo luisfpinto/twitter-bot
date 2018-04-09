@@ -40,7 +40,7 @@ app.post('/follow', (req, res) => {
       console.log('NumofFollowersRAW', data.followingListRaw.length)
       console.log('Filtered followers', data.followingList.length)
       let followingList = data.followingList
-      if (range) followingList = updateList(data.followingList)
+      if (range) followingList = updateList(data.followingList) // this must be because of a CheckBox
       twitterUser.follow(followingList, req.session.oauthAccessToken, req.session.oauthAccessTokenSecret)
       res.status(200)
     })

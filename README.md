@@ -13,6 +13,7 @@ This project is about creating a twitter bot that simulates a user behaviour to 
 - [x] If error follow all users I had
 - [x] Unfollow also based on following List ( Add a new filter for the unfollow process)
 - [ ] Follow a range of the user list
+- [ ] Create checkbox to avoid following people we already follow
 
 ## TODO
 - [ ] Tests

@@ -129,6 +129,7 @@ class User {
     console.log('Following')
     await users.map(async (user, index) => {
       try {
+        if (!this.range) this.range = 1 // If range was not defined then follow all the list
         if (this.range > 0 && user.id_str !== me.userId) { // Avoid following myself
           await Promise.delay(36000 * (index))
           await this.followOneUser(user.id_str, oauthAccessToken, oauthAccessTokenSecret)
