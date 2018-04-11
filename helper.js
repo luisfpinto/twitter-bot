@@ -37,12 +37,17 @@ function split (userIds) {
 }
 
 // This function will filter users based on a filter. If it doesn't pass the filter it will return false, otherwise true.
-function filterUser (users, filter) {
-  if (!filter) return users
-  console.log('Filtering Users')
+function filterUsers (users, filters) {
+  const {filter, keyword} = filters
+  if (!filters) return users
   let usersFiltered = users.map(user => {
     const {description, default_profile_image, statuses_count,
       followers_count, friends_count} = user
+
+    // If user description doesn't contain the keyword then return null
+    if (keyword && !description.includes(keyword)) return null
+
+    // Check Penalty
     let penalty = 0
     if (description === '') penalty++
     if (default_profile_image === true) penalty++
@@ -62,7 +67,7 @@ function filterUser (users, filter) {
       default:
         return user
     }
-  }).filter(r => !r)
+  }).filter(r => !!r)
   return usersFiltered
 }
 
@@ -106,4 +111,9 @@ function updateList (userName, followingList) {
     })
   })
 }
-module.exports = {request, split, filterUser, matchIds, saveFollowedUser, updateList}
+module.exports = {request, split, filterUsers, matchIds, saveFollowedUser, updateList}
+
+// Testing Purposes for the moment until I do some automatic tests
+// const users = JSON.parse(fs.readFileSync(`./data/XXXXX`, 'utf8')).followingListRaw
+// const filteredUsers = filterUsers(users, {filter: 'hard', keyword: 'H'})
+// console.log(filteredUsers.length, users.length)

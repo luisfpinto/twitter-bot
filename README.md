@@ -5,11 +5,11 @@ This project is about creating a twitter bot that simulates a user behaviour to 
 ## Features
 - [x] Loggin
 - [x] Get loggin user data
-- [ ] Get user to follow data
-- [ ] Follow an user
-- [ ] Unfollow an user
-- [ ] Follow a list of users
-- [ ] Unfollow a list of users
+- [x] Get user to follow data
+- [x] Follow an user
+- [x] Unfollow an user
+- [x] Follow a list of users
+- [x] Unfollow a list of users
 - [ ] Save friendlist in case of error
 - [ ] Create following List once we've followed someone not before
 - [ ] Avoid following yourself to avoid errors

@@ -1,4 +1,4 @@
-const { request, filterUser, matchIds, saveFollowedUser } = require('./helper')
+const { request, filterUsers, matchIds, saveFollowedUser } = require('./helper')
 const { oAuth } = require('./routes/authentication')
 const Promise = require('bluebird')
 var fs = require('fs')
@@ -43,18 +43,23 @@ class User {
   }
 
   createOrRetrieveFollowersList () {
-     // new Promise Convertir en promesa
-    fs.stat(`./data/${this.userName}`, async (stat, error) => {
-      if (stat !== null) { // There aren't any filet yet
-        user.followingListRaw = await this.getFollowersList()
-        fs.writeFile(`./data/${user.userName}`, JSON.stringify(user), 'utf8')
-        return (user.followingListRaw)
-      } else {
-        console.log('Retrievieng List')
-        user = JSON.parse(fs.readFileSync(`./data/${this.userName}`, 'utf8'))
-        console.log(user.followingListRaw.length)
-        return (user.followingListRaw)
-      }
+    return new Promise((resolve, reject) => {
+      fs.stat(`./data/${this.userName}`, async (stat, error) => {
+        try {
+          // Don't check fs error. When there is no file error is not empty
+          if (stat !== null) { // There aren't any filet yet
+            user.followingListRaw = await this.getFollowersList()
+            fs.writeFile(`./data/${user.userName}`, JSON.stringify(user), 'utf8')
+            return resolve(user.followingListRaw)
+          } else {
+            console.log('Retrievieng List')
+            user = JSON.parse(fs.readFileSync(`./data/${this.userName}`, 'utf8'))
+            return resolve(user.followingListRaw)
+          }
+        } catch (error) {
+          reject(error)
+        }
+      })
     })
   }
 
@@ -73,7 +78,6 @@ class User {
           console.log(rateLimitStatus.remaining)
           cursor === -1 ? user.followingListRaw = response.data.users : user.followingListRaw.push.apply(user.followingListRaw, response.data.users)
           cursor = response.data['next_cursor']
-          console.log(user.followingListRaw.length)
           let delay = 0
           if (rateLimitStatus.remaining === 0) {
             delay = 900000
@@ -90,51 +94,27 @@ class User {
     })
   }
 
-  getFollowersIds () {
-    return new Promise((resolve, reject) => {
-      console.log('Checking follower Ids')
-      request('GET', `https://api.twitter.com/1.1/followers/ids.json?cursor=${cursor}&screen_name=${this.realUserName}`)
-      .then(response => {
-        rateLimitStatus.remaining--
-        if (response.data['next_cursor'] === 0) {
-          if (!user.followersIds) user.followersIds = response.data.ids
-          else user.followersIds.push.apply(user.followersIds, response.data.ids)
-          return resolve()
-        } else {
-          console.log(rateLimitStatus.remaining)
-          console.log(user.followersIds)
-          cursor === -1 ? user.followersIds = response.data.ids : user.followersIds.push.apply(user.followersIds, response.data.users)
-          cursor = response.data['next_cursor']
-          console.log(user.followersIds.length)
-          let delay = 0
-          if (rateLimitStatus.remaining === 0) {
-            delay = 900000
-            rateLimitStatus.remaining = 30
-          }
-          return Promise.delay(delay).then(() => resolve(this.getFollowersIds(cursor)))
-        }
-      })
-      .catch(err => {
-        console.log('ERRRRR on getting followers Ids', err)
-        reject(err)
-      })
-    })
+  filterList (filters) {
+    user.followingListFiltered = filterUsers(user.followingListRaw, filters)
+    return user.followingListFiltered
   }
 
-  async follow (users, oauthAccessToken, oauthAccessTokenSecret) {
-    console.log('Following')
+  async follow (oauthAccessToken, oauthAccessTokenSecret) {
+    console.log('Following users')
+    const users = user.followingListFiltered ? user.followingListFiltered : user.followingListRaw // Check if this is correct or not
     await users.map(async (user, index) => {
       try {
         if (!this.range) this.range = 1 // If range was not defined then follow all the list
-        if (this.range > 0 && user.id_str !== me.userId) { // Avoid following myself
+        if (this.range > 0 && user.id_str !== this.realUserId) { // Avoid following myself
           await Promise.delay(36000 * (index))
           await this.followOneUser(user.id_str, oauthAccessToken, oauthAccessTokenSecret)
           this.range -- // TRY THIS
         }
       } catch (error) {
-        console.log(error)
+        return (error)
       }
     })
+    return true
   }
 
   followOneUser (userId, oauthAccessToken, oauthAccessTokenSecret) {
@@ -184,6 +164,37 @@ class User {
     })
   }
 
+  getFollowersIds () {
+    return new Promise((resolve, reject) => {
+      console.log('Checking follower Ids')
+      request('GET', `https://api.twitter.com/1.1/followers/ids.json?cursor=${cursor}&screen_name=${this.realUserName}`)
+      .then(response => {
+        rateLimitStatus.remaining--
+        if (response.data['next_cursor'] === 0) {
+          if (!user.followersIds) user.followersIds = response.data.ids
+          else user.followersIds.push.apply(user.followersIds, response.data.ids)
+          return resolve()
+        } else {
+          console.log(rateLimitStatus.remaining)
+          console.log(user.followersIds)
+          cursor === -1 ? user.followersIds = response.data.ids : user.followersIds.push.apply(user.followersIds, response.data.users)
+          cursor = response.data['next_cursor']
+          console.log(user.followersIds.length)
+          let delay = 0
+          if (rateLimitStatus.remaining === 0) {
+            delay = 900000
+            rateLimitStatus.remaining = 30
+          }
+          return Promise.delay(delay).then(() => resolve(this.getFollowersIds(cursor)))
+        }
+      })
+      .catch(err => {
+        console.log('ERRRRR on getting followers Ids', err)
+        reject(err)
+      })
+    })
+  }
+
   // function that will get the information about the API request limits status
   checkApiStatus () {
     return new Promise ((resolve, reject) => {
@@ -198,10 +209,6 @@ class User {
       })
       .catch(err => reject(err))
     })
-  }
-
-  filterList (filter) {
-    return filterUser(user.followingListRaw, filter)
   }
 }
 

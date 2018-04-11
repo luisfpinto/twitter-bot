@@ -24,10 +24,6 @@ app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`)
 })
 
-app.get('/checkSession', (req, res) => {
-  console.log(req.session)
-})
-
 let twitterUser
 
 // Follow users from a List
