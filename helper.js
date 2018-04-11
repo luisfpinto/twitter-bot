@@ -3,7 +3,6 @@ const { ACCESS_TOKEN } = require('./config')
 var fs = require('fs')
 
 const request = function (method = 'GET', url = '') {
-  // console.log('Doing Request')
   return new Promise((resolve, reject) => {
     axios({
       method,
@@ -37,7 +36,7 @@ function split (userIds) {
   return followers
 }
 
-// This function will filter users based on a filer. If it doesn't pass the filter it will return false, otherwise true.
+// This function will filter users based on a filter. If it doesn't pass the filter it will return false, otherwise true.
 function filterUser (users, filter) {
   if (!filter) return users
   console.log('Filtering Users')
@@ -64,10 +63,10 @@ function filterUser (users, filter) {
         return user
     }
   }).filter(r => !r)
-  console.log('USERS FILTERED LENGTH', usersFiltered.length)
   return usersFiltered
 }
 
+// Check weather a user is following us or not
 function matchIds (following, followers) {
   let found = false
   let noFollowers = []
@@ -80,6 +79,7 @@ function matchIds (following, followers) {
   return noFollowers
 }
 
+// Save user in a file once I follow him
 function saveFollowedUser (userName, followedUser) {
   console.log('Saving Follower', followedUser)
   fs.stat(`./data/${userName}_followList`, async (stat, error) => {

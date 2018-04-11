@@ -3,7 +3,8 @@ var session = require('express-session')
 const app = express()
 var bodyParser = require('body-parser')
 
-const { router } = require('./api/authentication')
+const { auth } = require('./routes/authentication')
+const { user } = require('./routes/user')
 const { updateList } = require('./helper')
 const { PORT, secret } = require('./config')
 const { User } = require('./user')
@@ -14,7 +15,8 @@ app.use(session({
   cookie: { secure: false } // Set this to false to allow using non https hosts
 }))
 
-app.use('/auth', router)
+app.use('/auth', auth)
+app.use('/user', user)
 app.use(express.static('public'))
 app.use(bodyParser.urlencoded({ extended: true }))
 
@@ -22,8 +24,13 @@ app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`)
 })
 
+app.get('/checkSession', (req, res) => {
+  console.log(req.session)
+})
+
 let twitterUser
 
+// Follow users from a List
 app.post('/follow', (req, res) => {
   console.log('-------------****************-------------')
   let user = req.body.user
@@ -32,7 +39,7 @@ app.post('/follow', (req, res) => {
   let range = req.body.number
   if (req.session.oauthAccessToken) {
     twitterUser = new User(user, filter, realUser, range)
-    twitterUser.getUser()
+    twitterUser.getUserInfo()
     .then(data => {
       console.log('User', data.userName)
       console.log('Number of followers', data.numFollowers)
@@ -69,7 +76,7 @@ app.post('/unfollow', (req, res) => {
 })
 
 app.use('*', (req, res) => {
-  res.send('Forbidden')
+  res.send('Forbidden!')
 })
 
 module.exports = { app }

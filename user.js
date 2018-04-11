@@ -1,36 +1,32 @@
 const { request, filterUser, matchIds, saveFollowedUser } = require('./helper')
-const { oAuth } = require('./api/authentication')
+const { oAuth } = require('./routes/authentication')
 const Promise = require('bluebird')
 var fs = require('fs')
 
 let user // User info
-let me // My account info
 let cursor = -1 // we use this variable for the checkFollowers function to go through all our users see more https://developer.twitter.com/en/docs/basics/cursoring checkFollowers()
 let rateLimitStatus
 
 class User {
-  constructor (userName, filter, realUserName, range) {
+  constructor (realUserName, realUserId, userName) {
     this.realUserName = realUserName // Name of the original account (My account)
+    this.realUserId = realUserId
     this.userName = userName // Name of the friend we want to get the followers
-    this.filter = filter
-    this.range = range // Number of people to follow
   }
 
   // This function will manage all the process to get the followers of an account
-  async getUser () {
+  async getUserInfo () {
     try {
       rateLimitStatus = await this.checkApiStatus()
-      user = await this.getUserInfo(this.userName)
-      me = await this.getUserInfo(this.realUserName)
-      await this.createOrRetrieveFollowersList()
-      return user
+      user = await this.userInfo(this.userName)
+      return {user}
     } catch (err) {
       throw err
     }
   }
 
   // This function provides the whole information we want to get the followers from
-  getUserInfo (user) {
+  userInfo (user) {
     console.log('Getting user info')
     return new Promise((resolve, reject) => {
       request('GET', `https://api.twitter.com/1.1/users/lookup.json?screen_name=${user}`)
@@ -47,17 +43,18 @@ class User {
   }
 
   createOrRetrieveFollowersList () {
-    return new Promise((resolve, reject) => {
-      fs.stat(`./data/${user.userName}`, async (stat, error) => {
-        if (stat !== null) { // There aren't any filet yet
-          user.followingList = await this.getFollowersList()
-          fs.writeFile(`./data/${user.userName}`, JSON.stringify(user), 'utf8')
-          return resolve()
-        } else {
-          user = JSON.parse(fs.readFileSync(`./data/${user.userName}`, 'utf8'))
-          return resolve()
-        }
-      })
+     // new Promise Convertir en promesa
+    fs.stat(`./data/${this.userName}`, async (stat, error) => {
+      if (stat !== null) { // There aren't any filet yet
+        user.followingListRaw = await this.getFollowersList()
+        fs.writeFile(`./data/${user.userName}`, JSON.stringify(user), 'utf8')
+        return (user.followingListRaw)
+      } else {
+        console.log('Retrievieng List')
+        user = JSON.parse(fs.readFileSync(`./data/${this.userName}`, 'utf8'))
+        console.log(user.followingListRaw.length)
+        return (user.followingListRaw)
+      }
     })
   }
 
@@ -71,8 +68,7 @@ class User {
         if (response.data['next_cursor'] === 0) {
           if (!user.followingListRaw) user.followingListRaw = response.data.users
           else user.followingListRaw.push.apply(user.followingListRaw, response.data.users)
-          const filterUserd = filterUser(user.followingListRaw, this.filter)
-          return resolve(filterUserd)
+          return resolve(user.followingListRaw)
         } else {
           console.log(rateLimitStatus.remaining)
           cursor === -1 ? user.followingListRaw = response.data.users : user.followingListRaw.push.apply(user.followingListRaw, response.data.users)
@@ -202,6 +198,10 @@ class User {
       })
       .catch(err => reject(err))
     })
+  }
+
+  filterList (filter) {
+    return filterUser(user.followingListRaw, filter)
   }
 }
 

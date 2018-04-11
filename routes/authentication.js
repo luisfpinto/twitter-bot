@@ -1,5 +1,5 @@
 const express = require('express')
-var router = express.Router()
+var auth = express.Router()
 const OAuth = require('oauth').OAuth
 const axios = require('axios')
 const { API_KEY, API_SECRET, callbackURL, API_SECRET_64 } = require('../config')
@@ -15,7 +15,7 @@ const oAuth = new OAuth(
   'HMAC-SHA1'
 )
 
-router.get('/login', (req, res) => {
+auth.get('/login', (req, res) => {
   oAuth.get('https://api.twitter.com/1.1/account/verify_credentials.json', req.session.oauthAccessToken, req.session.oauthAccessTokenSecret, (error, data, response) => {
     if (error) { // There will be an error if the user is not logged in
       res.redirect('/auth/connect')
@@ -27,7 +27,7 @@ router.get('/login', (req, res) => {
 })
 
 // Function to login twitter user using OAuth
-router.get('/connect', (req, res) => {
+auth.get('/connect', (req, res) => {
   console.log('Connecting to Twitter')
   oAuth.getOAuthRequestToken((error, oauthToken, oauthTokenSecret) => {
     if (error) {
@@ -41,7 +41,7 @@ router.get('/connect', (req, res) => {
 })
 
 // Callback url. This is set in the app setting of the twitter web dashboard
-router.get('/callback', function (req, res) {
+auth.get('/callback', function (req, res) {
   console.log('Successfully Logged in Twitter-Bot')
   oAuth.getOAuthAccessToken(req.session.oauthRequestToken, req.session.oauthRequestTokenSecret, req.query.oauth_verifier, (error, oauthAccessToken, oauthAccessTokenSecret) => {
     if (error) {
@@ -49,15 +49,18 @@ router.get('/callback', function (req, res) {
     } else {
       req.session.oauthAccessToken = oauthAccessToken
       req.session.oauthAccessTokenSecret = oauthAccessTokenSecret
-      res.redirect('/')
+      getUserInfo(oauthAccessToken, oauthAccessTokenSecret)
+      .then((userInfo) => {
+        req.session.userInfo = userInfo
+        return res.redirect(`/?name=${userInfo.realUserName}&id=${userInfo.realUserId}`)
+      })
+      .catch(() => res.send(error))
     }
   })
 })
 
 // Get the access token
-router.get('/getAccessToken', (req, res) => {
-  console.log('Authorizing')
-  console.log(API_SECRET_64)
+auth.get('/getAccessToken', (req, res) => {
   axios({
     method: 'POST',
     url: 'https://api.twitter.com/oauth2/token',
@@ -75,4 +78,20 @@ router.get('/getAccessToken', (req, res) => {
   .catch(err => console.log(err.response))
 })
 
-module.exports = { router, oAuth }
+// Get user info that did the oAuth process
+function getUserInfo (oauthAccessToken, oauthAccessTokenSecret) {
+  return new Promise((resolve, reject) => {
+    oAuth.get('https://api.twitter.com/1.1/account/verify_credentials.json', oauthAccessToken, oauthAccessTokenSecret, (error, data, response) => {
+      if (error) { // There will be an error if the user is not logged in
+        console.log('ERRRR', error)
+        return reject(error)
+      } else {
+        const response = JSON.parse(data)
+        const userInfo = { realUserName: response.screen_name, realUserId: response.id_str }
+        return resolve(userInfo)
+      }
+    })
+  })
+}
+
+module.exports = { auth, oAuth }
