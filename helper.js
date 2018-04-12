@@ -100,20 +100,25 @@ function saveFollowedUser (userName, followedUser) {
 }
 
 // Funtion that will update the followList based on users we've already followed
-function updateList (userName, followingList) {
-  let usersToFollow = []
-  let found = false
+function updateListToFollow (userName, followingList) {
   let usersAlreadyFollowed = JSON.parse(fs.readFileSync(`./data/${userName}_followList`, 'utf8')).followedUsers
-  followingList.map(userToFollow => {
-    usersAlreadyFollowed.map((followedUser, index) => {
-      if (followedUser === userToFollow.id_str) found = true
-      if (index + 1 === usersAlreadyFollowed.length && !found) usersToFollow.push(userToFollow)
+  return followingList.filter(userToFollow => {
+    return !usersAlreadyFollowed.some(followedUser => {
+      return (followedUser === userToFollow)
     })
   })
+  // return followingList.map(userToFollow => {
+  //   return usersAlreadyFollowed.map((followedUser, index) => {
+  //     // if (followedUser === userToFollow.id_str) return null
+  //     if (followedUser === userToFollow) return null
+  //     return userToFollow
+  //   })
+  // })
 }
-module.exports = {request, split, filterUsers, matchIds, saveFollowedUser, updateList}
+module.exports = {request, split, filterUsers, matchIds, saveFollowedUser, updateListToFollow}
 
 // Testing Purposes for the moment until I do some automatic tests
 // const users = JSON.parse(fs.readFileSync(`./data/XXXXX`, 'utf8')).followingListRaw
 // const filteredUsers = filterUsers(users, {filter: 'hard', keyword: 'H'})
 // console.log(filteredUsers.length, users.length)
+// console.log(updateListToFollow('luisfpinto_', ['123', "790456137133031425","790456137133031425","882876837323517952","922367579347406848","860393317456117761","2790935251"]))

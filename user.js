@@ -1,4 +1,4 @@
-const { request, filterUsers, matchIds, saveFollowedUser } = require('./helper')
+const { request, filterUsers, matchIds, saveFollowedUser, updateListToFollow } = require('./helper')
 const { oAuth } = require('./routes/authentication')
 const Promise = require('bluebird')
 var fs = require('fs')
@@ -94,27 +94,37 @@ class User {
     })
   }
 
+  // Apply filters to the RAW LIST
   filterList (filters) {
+    console.log('Filtering List')
     user.followingListFiltered = filterUsers(user.followingListRaw, filters)
     return user.followingListFiltered
   }
 
-  async follow (oauthAccessToken, oauthAccessTokenSecret) {
-    console.log('Following users')
-    const users = user.followingListFiltered ? user.followingListFiltered : user.followingListRaw // Check if this is correct or not
-    await users.map(async (user, index) => {
+  // Check what users I currently follow and pop them from the list to follow
+  updateList () {
+    console.log('Updating List')
+    const users = user.followingListFiltered ? user.followingListFiltered : user.followingListRaw
+    return updateListToFollow(this.userName, users)
+  }
+
+  async follow (oauthAccessToken, oauthAccessTokenSecret, users, range) {
+    console.log('Following List')
+    let rangeAux = range
+    const pArray = users.map(async (user, index) => {
       try {
-        if (!this.range) this.range = 1 // If range was not defined then follow all the list
-        if (this.range > 0 && user.id_str !== this.realUserId) { // Avoid following myself
+        if ((rangeAux > 0 || !range) && user.id_str !== this.realUserId) { // Avoid following myself
+          rangeAux-- // TRY THIS
           await Promise.delay(36000 * (index))
           await this.followOneUser(user.id_str, oauthAccessToken, oauthAccessTokenSecret)
-          this.range -- // TRY THIS
+          return user.id_str
         }
       } catch (error) {
         return (error)
       }
     })
-    return true
+    await Promise.all(pArray)
+    return pArray
   }
 
   followOneUser (userId, oauthAccessToken, oauthAccessTokenSecret) {
