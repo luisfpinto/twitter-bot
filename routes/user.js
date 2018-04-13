@@ -38,16 +38,17 @@ user.post('/filter', (req, res) => {
   res.send(followingListFiltered)
 })
 
-user.get('/follow', (req, res) => {
-  // Create a file with people I've followed with this method DONE
-  // Create a range to follow -> Check last user I've followed from the list.
-  // const range = req.body.range
-  const range = 10
+user.post('/follow', (req, res) => {
+  const range = req.body.range
   console.log('Following Users with range', range)
   const {oauthAccessToken, oauthAccessTokenSecret} = req.session
-  const users = twitterUser.updateList()
+  const users = twitterUser.updateList() // Test Update List
   const result = twitterUser.follow(oauthAccessToken, oauthAccessTokenSecret, users, range)
   res.send(result)
+})
+
+user.post('/unfollow', (req, res) => {
+
 })
 
 module.exports = { user }

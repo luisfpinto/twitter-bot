@@ -63,7 +63,7 @@ class User {
     })
   }
 
-  // This function will get all the followers information and it will return an array of 100 users arrays. Limited to 5000 Followers. Need to use cursoring
+  // This function will get all the followers information
   getFollowersList () {
     console.log('Checking followers')
     return new Promise((resolve, reject) => {
@@ -73,6 +73,7 @@ class User {
         if (response.data['next_cursor'] === 0) {
           if (!user.followingListRaw) user.followingListRaw = response.data.users
           else user.followingListRaw.push.apply(user.followingListRaw, response.data.users)
+          cursor = -1 // reset cursor
           return resolve(user.followingListRaw)
         } else {
           console.log(rateLimitStatus.remaining)
@@ -94,18 +95,31 @@ class User {
     })
   }
 
-  // Apply filters to the RAW LIST
+  // Apply filters to the RAW LIST {filter: 'soft', 'medium' or 'hard', keyword: 'keyword'}
   filterList (filters) {
     console.log('Filtering List')
     user.followingListFiltered = filterUsers(user.followingListRaw, filters)
     return user.followingListFiltered
   }
 
-  // Check what users I currently follow and pop them from the list to follow
-  updateList () {
-    console.log('Updating List')
-    const users = user.followingListFiltered ? user.followingListFiltered : user.followingListRaw
-    return updateListToFollow(this.userName, users)
+  /*
+  Update list to follow and popup:
+  - Users that I've already followed from the List
+  - Users who follow me
+  - Users that I currently follow in my profile
+  */
+  async updateList () {
+    try {
+      console.log('Updating List')
+      const usersToFollow = user.followingListFiltered ? user.followingListFiltered : user.followingListRaw
+      const usersAlreadyFollowed = JSON.parse(fs.readFileSync(`./data/${this.userName}_followList`, 'utf8')).followedUsers
+      const followersIds = await this.getFollowersIds()
+      const friendsIds = await this.getFriendsIds()
+      const usersToPopUp = usersAlreadyFollowed.concat(followersIds, friendsIds)
+      return updateListToFollow(this.userName, usersToFollow, usersToPopUp)
+    } catch (error) {
+      return error
+    }
   }
 
   async follow (oauthAccessToken, oauthAccessTokenSecret, users, range) {
@@ -113,8 +127,8 @@ class User {
     let rangeAux = range
     const pArray = users.map(async (user, index) => {
       try {
-        if ((rangeAux > 0 || !range) && user.id_str !== this.realUserId) { // Avoid following myself
-          rangeAux-- // TRY THIS
+        if ((rangeAux > 0 || !range) && user.id_str !== this.realUserId) {
+          rangeAux--
           await Promise.delay(36000 * (index))
           await this.followOneUser(user.id_str, oauthAccessToken, oauthAccessTokenSecret)
           return user.id_str
@@ -144,19 +158,22 @@ class User {
   }
 
   async unfollow (oauthAccessToken, oauthAccessTokenSecret) {
+    let pArray
     try {
-      cursor = -1  // Reset cursor for the unfollow actions
-      await this.getFollowersIds(this.realUserName)
+      await this.getFollowersIds()
       let followedList = JSON.parse(fs.readFileSync(`./data/${this.userName}_followList`, 'utf8')).followedUsers
       const noMatchedFollowingIds = matchIds(followedList, user.followersIds)
       console.log('Unfollowing', noMatchedFollowingIds.length)
-      noMatchedFollowingIds.map(async (user, index) => { // Don't need that await
+      pArray = noMatchedFollowingIds.map(async (user, index) => { // Don't need that await
         await Promise.delay(36000 * (index))
         await this.unfollowOneUser(user, oauthAccessToken, oauthAccessTokenSecret)
+        return user
       })
     } catch (error) {
       throw error
     }
+    await Promise.all(pArray)
+    return pArray
   }
 
   unfollowOneUser (userId, oauthAccessToken, oauthAccessTokenSecret) {
@@ -174,6 +191,7 @@ class User {
     })
   }
 
+  // Get users who follow me
   getFollowersIds () {
     return new Promise((resolve, reject) => {
       console.log('Checking follower Ids')
@@ -183,6 +201,7 @@ class User {
         if (response.data['next_cursor'] === 0) {
           if (!user.followersIds) user.followersIds = response.data.ids
           else user.followersIds.push.apply(user.followersIds, response.data.ids)
+          cursor = -1 // reset cursor
           return resolve()
         } else {
           console.log(rateLimitStatus.remaining)
@@ -205,9 +224,42 @@ class User {
     })
   }
 
+  // Get users I follow
+  getFriendsIds () {
+    return new Promise((resolve, reject) => {
+      console.log('Checking follower Ids')
+      request('GET', `https://api.twitter.com/1.1/friends/ids.json?cursor=${cursor}&screen_name=${this.realUserName}`)
+      .then(response => {
+        rateLimitStatus.remaining--
+        if (response.data['next_cursor'] === 0) {
+          if (!user.friendsIds) user.friendsIds = response.data.ids
+          else user.friendsIds.push.apply(user.friendsIds, response.data.ids)
+          cursor = -1 // reset cursor
+          return resolve()
+        } else {
+          console.log(rateLimitStatus.remaining)
+          console.log(user.friendsIds)
+          cursor === -1 ? user.friendsIds = response.data.ids : user.friendsIds.push.apply(user.friendsIds, response.data.users)
+          cursor = response.data['next_cursor']
+          console.log(user.friendsIds.length)
+          let delay = 0
+          if (rateLimitStatus.remaining === 0) {
+            delay = 900000
+            rateLimitStatus.remaining = 30
+          }
+          return Promise.delay(delay).then(() => resolve(this.getFriendsIds(cursor)))
+        }
+      })
+      .catch(err => {
+        console.log('ERRRRR on getting friends Ids', err)
+        reject(err)
+      })
+    })
+  }
+
   // function that will get the information about the API request limits status
   checkApiStatus () {
-    return new Promise ((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       request('GET', `https://api.twitter.com/1.1/application/rate_limit_status.json?resources=followers`)
       .then(response => {
         let data = response.data.resources.followers['/followers/list']

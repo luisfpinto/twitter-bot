@@ -100,20 +100,12 @@ function saveFollowedUser (userName, followedUser) {
 }
 
 // Funtion that will update the followList based on users we've already followed
-function updateListToFollow (userName, followingList) {
-  let usersAlreadyFollowed = JSON.parse(fs.readFileSync(`./data/${userName}_followList`, 'utf8')).followedUsers
+function updateListToFollow (userName, followingList, ListToPopUp) {
   return followingList.filter(userToFollow => {
-    return !usersAlreadyFollowed.some(followedUser => {
-      return (followedUser === userToFollow)
+    return !ListToPopUp.some(followedUser => {
+      return (followedUser === userToFollow.id_str)
     })
   })
-  // return followingList.map(userToFollow => {
-  //   return usersAlreadyFollowed.map((followedUser, index) => {
-  //     // if (followedUser === userToFollow.id_str) return null
-  //     if (followedUser === userToFollow) return null
-  //     return userToFollow
-  //   })
-  // })
 }
 module.exports = {request, split, filterUsers, matchIds, saveFollowedUser, updateListToFollow}
 
