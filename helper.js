@@ -18,22 +18,20 @@ const request = function (method = 'GET', url = '') {
   })
 }
 
-// This function will split the number of users in a few array of 100users. This is because to get userinfo you can only do get a request for up to 100 users.
-function split (userIds) {
-  const length = userIds.length
-  let followers = [] // Here I'll an array of users split every 100
-  let users = []
-  for (var i = 0; i < length; i++) {
-    if (i % 100 !== 0 || i === 0) {
-      users.push(userIds[i])
-     // console.log(users)
-    } else {
-      followers.push(users)
-      users = []
-    }
-  }
-  if (users.length !== 0) followers.push(users)
-  return followers
+ // function that will get the information about the API request limits status
+function checkApiStatus () {
+  return new Promise((resolve, reject) => {
+    request('GET', `https://api.twitter.com/1.1/application/rate_limit_status.json?resources=followers`)
+    .then(response => {
+      let data = response.data.resources.followers['/followers/list']
+      return resolve({
+        limit: data.limit,
+        remaining: data.remaining,
+        reset: data.reset
+      })
+    })
+    .catch(err => reject(err))
+  })
 }
 
 // This function will filter users based on a filter. If it doesn't pass the filter it will return false, otherwise true.
@@ -100,14 +98,14 @@ function saveFollowedUser (userName, followedUser) {
 }
 
 // Funtion that will update the followList based on users we've already followed
-function updateListToFollow (userName, followingList, ListToPopUp) {
+function updateListToFollow (followingList, ListToPopUp) {
   return followingList.filter(userToFollow => {
     return !ListToPopUp.some(followedUser => {
       return (followedUser === userToFollow.id_str)
     })
   })
 }
-module.exports = {request, split, filterUsers, matchIds, saveFollowedUser, updateListToFollow}
+module.exports = {request, filterUsers, matchIds, saveFollowedUser, updateListToFollow, checkApiStatus}
 
 // Testing Purposes for the moment until I do some automatic tests
 // const users = JSON.parse(fs.readFileSync(`./data/XXXXX`, 'utf8')).followingListRaw

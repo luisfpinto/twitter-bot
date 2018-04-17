@@ -42,9 +42,10 @@ user.post('/follow', (req, res) => {
   const range = req.body.range
   console.log('Following Users with range', range)
   const {oauthAccessToken, oauthAccessTokenSecret} = req.session
-  const users = twitterUser.updateList() // Test Update List
-  const result = twitterUser.follow(oauthAccessToken, oauthAccessTokenSecret, users, range)
-  res.send(result)
+  twitterUser.updateList() // Test Update List
+  .then(users => twitterUser.follow(oauthAccessToken, oauthAccessTokenSecret, users, range)) // Check if this returns a promise or not
+  .then(() => res.send('OK'))
+  .catch(err => res.send(err))
 })
 
 user.post('/unfollow', (req, res) => {

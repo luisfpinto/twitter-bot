@@ -1,4 +1,4 @@
-const { request, filterUsers, matchIds, saveFollowedUser, updateListToFollow } = require('./helper')
+const { request, filterUsers, matchIds, saveFollowedUser, updateListToFollow, checkApiStatus } = require('./helper')
 const { oAuth } = require('./routes/authentication')
 const Promise = require('bluebird')
 var fs = require('fs')
@@ -17,7 +17,7 @@ class User {
   // This function will manage all the process to get the followers of an account
   async getUserInfo () {
     try {
-      rateLimitStatus = await this.checkApiStatus()
+      rateLimitStatus = await checkApiStatus()
       user = await this.userInfo(this.userName)
       return {user}
     } catch (err) {
@@ -112,13 +112,13 @@ class User {
     try {
       console.log('Updating List')
       const usersToFollow = user.followingListFiltered ? user.followingListFiltered : user.followingListRaw
-      const usersAlreadyFollowed = JSON.parse(fs.readFileSync(`./data/${this.userName}_followList`, 'utf8')).followedUsers
+      const usersAlreadyFollowed = await this.retrieveFollowList()
       const followersIds = await this.getFollowersIds()
       const friendsIds = await this.getFriendsIds()
       const usersToPopUp = usersAlreadyFollowed.concat(followersIds, friendsIds)
-      return updateListToFollow(this.userName, usersToFollow, usersToPopUp)
+      return Promise.resolve(updateListToFollow(usersToFollow, usersToPopUp))
     } catch (error) {
-      return error
+      return Promise.reject(error)
     }
   }
 
@@ -257,19 +257,22 @@ class User {
     })
   }
 
-  // function that will get the information about the API request limits status
-  checkApiStatus () {
+  retrieveFollowList () {
     return new Promise((resolve, reject) => {
-      request('GET', `https://api.twitter.com/1.1/application/rate_limit_status.json?resources=followers`)
-      .then(response => {
-        let data = response.data.resources.followers['/followers/list']
-        return resolve({
-          limit: data.limit,
-          remaining: data.remaining,
-          reset: data.reset
-        })
+      fs.stat(`./data/${this.userName}_followList`, async (stat, error) => {
+        try {
+          // Don't check fs error. When there is no file error is not empty
+          if (stat !== null) { // There aren't any filet yet
+            return resolve([])
+          } else {
+            console.log('Retrievieng Follow List')
+            const followList = JSON.parse(fs.readFileSync(`./data/${this.userName}_followList`, 'utf8')).followedUsers
+            return resolve(followList)
+          }
+        } catch (error) {
+          reject(error)
+        }
       })
-      .catch(err => reject(err))
     })
   }
 }
